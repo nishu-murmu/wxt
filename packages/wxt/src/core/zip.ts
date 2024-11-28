@@ -64,28 +64,26 @@ export async function zip(config?: InlineConfig): Promise<string[]> {
       sourcesZipFilename,
     );
 
-    console.log(output.manifest.content_scripts);
-    let dd = output.steps.map(({ entrypoints }: any) => entrypoints);
-    let init_ar = dd
+    let outStepsFiles = output.steps
+      .map(({ entrypoints }: any) => entrypoints)
       .flat(Infinity)
       .map(({ inputPath }) => inputPath)
-      .map((r) => path.relative(wxt.config.srcDir, r));
-    let df = await glob(['**/*'], {
-      cwd: wxt.config.zip.sourcesRoot,
-      ignore: ['**/node_modules'],
-      onlyFiles: true,
-    });
-    let arr = df.map((r) => path.relative(wxt.config.srcDir, r));
-    console.log(init_ar, arr);
+      .map((r) => path.relative(process.cwd(), r));
 
-    let exclude_ar = arr
-      .filter((r) => r.includes('entrypoints'))
-      .filter((r) => !init_ar.includes(r));
-    console.log(exclude_ar);
+    // let allFiles = await glob(['**/*'], {
+    //   cwd: wxt.config.zip.sourcesRoot,
+    //   ignore: ['**/node_modules'],
+    //   onlyFiles: true,
+    // });
+    // let exclude_ar = allFiles
+    //   .map((r) => path.relative(process.cwd(), r))
+    //   .filter((r) => r.includes('entrypoints'))
+    //   .filter((r) => !outStepsFiles.includes(r));
 
     await zipDir(wxt.config.zip.sourcesRoot, sourcesZipPath, {
       include: wxt.config.zip.includeSources,
       exclude: wxt.config.zip.excludeSources,
+      excludeFiles: outStepsFiles,
       transform(absolutePath, zipPath, content) {
         if (zipPath.endsWith('package.json')) {
           return addOverridesToPackageJson(absolutePath, content, overrides);
@@ -115,6 +113,7 @@ async function zipDir(
   options?: {
     include?: string[];
     exclude?: string[];
+    excludeFiles?: string[];
     transform?: (
       absolutePath: string,
       zipPath: string,
@@ -138,12 +137,27 @@ async function zipDir(
       !options?.exclude?.some((pattern) => minimatch(relativePath, pattern))
     );
   });
+
+  let allFilesWithRelativePaths = files.map((r) =>
+    path.relative(process.cwd(), r),
+  );
+  let excludedFilesWithRelativePaths = (options?.excludeFiles || []).map((r) =>
+    path.relative(process.cwd(), r),
+  );
+
+  let filteredFiles = allFilesWithRelativePaths.filter((file) =>
+    excludedFilesWithRelativePaths.includes(file),
+  );
+
+  const newFiles = options?.excludeFiles?.length ? filteredFiles : files;
+
   const filesToZip = [
-    ...files,
+    ...newFiles,
     ...(options?.additionalFiles ?? []).map((file) =>
       path.relative(directory, file),
     ),
   ];
+  console.log({ filesToZip });
   for (const file of filesToZip) {
     const absolutePath = path.resolve(directory, file);
     if (file.endsWith('.json')) {
@@ -155,7 +169,6 @@ async function zipDir(
     } else {
       const content = await fs.readFile(absolutePath);
 
-      // console.log({file})
       archive.file(file, content);
     }
   }

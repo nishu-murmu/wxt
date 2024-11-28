@@ -128,7 +128,6 @@ export async function findEntrypoints(): Promise<Entrypoint[]> {
       }),
     ),
   );
-
   if (wxt.config.command === 'serve' && !hasBackground) {
     entrypoints.push(
       await getBackgroundEntrypoint({
