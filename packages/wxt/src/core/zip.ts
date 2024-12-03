@@ -19,7 +19,7 @@ import { normalizePath } from './utils/paths';
  */
 export async function zip(config?: InlineConfig): Promise<string[]> {
   await registerWxt('build', config);
-  const output = await internalBuild(true);
+  const output = await internalBuild();
   await wxt.hooks.callHook('zip:start', wxt);
 
   const start = Date.now();

@@ -32,11 +32,8 @@ import { createExtensionEnvironment } from '../environments';
 
 /**
  * Return entrypoints and their configuration by looking through the project's files. *//**
- * @param {string} [allowAllEntryPoints] - If true, all entrypoints are returned.
  */
-export async function findEntrypoints(
-  allowAllEntryPoints?: boolean,
-): Promise<Entrypoint[]> {
+export async function findEntrypoints(): Promise<Entrypoint[]> {
   // Make sure required TSConfig file exists to load dependencies
   await fs.mkdir(wxt.config.wxtDir, { recursive: true });
   try {
@@ -68,14 +65,7 @@ export async function findEntrypoints(
     );
     if (matchingGlob) {
       const type = PATH_GLOB_TO_TYPE_MAP[matchingGlob];
-      results.push({
-        name,
-        inputPath,
-        type,
-        skipped:
-          wxt.config.filterEntrypoints != null &&
-          !wxt.config.filterEntrypoints.has(name),
-      });
+      results.push({ name, inputPath, type });
     }
     return results;
   }, []);
@@ -87,7 +77,7 @@ export async function findEntrypoints(
   // Import entrypoints to get their config
   let hasBackground = false;
   const env = createExtensionEnvironment();
-  const entrypoints: Entrypoint[] = await env.run(() =>
+  const entrypointsWithoutSkipped: Entrypoint[] = await env.run(() =>
     Promise.all(
       entrypointInfos.map(async (info): Promise<Entrypoint> => {
         const { type } = info;
@@ -133,67 +123,44 @@ export async function findEntrypoints(
   );
 
   if (wxt.config.command === 'serve' && !hasBackground) {
-    entrypoints.push(
+    entrypointsWithoutSkipped.push(
       await getBackgroundEntrypoint({
         inputPath: VIRTUAL_NOOP_BACKGROUND_MODULE_ID,
         name: 'background',
         type: 'background',
-        skipped: false,
       }),
     );
   }
 
+  // Mark entrypoints as skipped or not
+  const entrypoints = entrypointsWithoutSkipped.map((entry) => ({
+    ...entry,
+    skipped: isEntrypointSkipped(entry),
+  }));
+
   wxt.logger.debug('All entrypoints:', entrypoints);
-  const skippedEntrypointNames = entrypointInfos
+  const skippedEntrypointNames = entrypoints
     .filter((item) => item.skipped)
     .map((item) => item.name);
   if (skippedEntrypointNames.length) {
     wxt.logger.warn(
-      `Filter excluded the following entrypoints:\n${skippedEntrypointNames
-        .map((item) => `${pc.dim('-')} ${pc.cyan(item)}`)
-        .join('\n')}`,
+      [
+        'The following entrypoints have been skipped:',
+        ...skippedEntrypointNames.map(
+          (item) => `${pc.dim('-')} ${pc.cyan(item)}`,
+        ),
+      ].join('\n'),
     );
   }
+  await wxt.hooks.callHook('entrypoints:resolved', wxt, entrypoints);
 
-  if (allowAllEntryPoints) {
-    wxt.config.zip.excludeSources = entrypoints.map((entry: Entrypoint) => {
-      return entry.inputPath;
-    });
-  }
-  const targetEntrypoints = entrypoints.filter((entry) => {
-    const { include, exclude } = entry.options;
-    if (include?.length && exclude?.length) {
-      wxt.logger.warn(
-        `The ${entry.name} entrypoint lists both include and exclude, but only one can be used per entrypoint. Entrypoint ignored.`,
-      );
-      return false;
-    }
-    if (exclude?.length && !include?.length) {
-      return !exclude.includes(wxt.config.browser);
-    }
-    if (include?.length && !exclude?.length) {
-      return include.includes(wxt.config.browser);
-    }
-    if (skippedEntrypointNames.includes(entry.name)) {
-      return false;
-    }
-
-    return true;
-  });
-  wxt.logger.debug(`${wxt.config.browser} entrypoints:`, targetEntrypoints);
-  await wxt.hooks.callHook('entrypoints:resolved', wxt, targetEntrypoints);
-
-  return targetEntrypoints;
+  return entrypoints;
 }
 
 interface EntrypointInfo {
   name: string;
   inputPath: string;
   type: Entrypoint['type'];
-  /**
-   * @default false
-   */
-  skipped: boolean;
 }
 
 function preventDuplicateEntrypointNames(files: EntrypointInfo[]) {
@@ -261,7 +228,6 @@ async function getPopupEntrypoint(
     options: resolvePerBrowserOptions(options, wxt.config.browser),
     inputPath: info.inputPath,
     outputDir: wxt.config.outDir,
-    skipped: info.skipped,
   };
 }
 
@@ -464,6 +430,29 @@ async function getHtmlEntrypointOptions<T extends BaseEntrypointOptions>(
   });
 
   return options;
+}
+
+function isEntrypointSkipped(entry: Omit<Entrypoint, 'skipped'>): boolean {
+  if (wxt.config.filterEntrypoints != null) {
+    return !wxt.config.filterEntrypoints.has(entry.name);
+  }
+
+  const { include, exclude } = entry.options;
+  if (include?.length && exclude?.length) {
+    wxt.logger.warn(
+      `The ${entry.name} entrypoint lists both include and exclude, but only one can be used per entrypoint. Entrypoint skipped.`,
+    );
+    return true;
+  }
+
+  if (exclude?.length && !include?.length) {
+    return exclude.includes(wxt.config.browser);
+  }
+  if (include?.length && !exclude?.length) {
+    return !include.includes(wxt.config.browser);
+  }
+
+  return false;
 }
 
 const PATH_GLOB_TO_TYPE_MAP: Record<string, Entrypoint['type']> = {
