@@ -200,6 +200,8 @@ function addEntrypoints(
     | SidepanelEntrypoint[]
     | undefined;
 
+  // console.log({entrypoints})
+
   if (background) {
     const script = getEntrypointBundlePath(
       background,

@@ -217,6 +217,7 @@ function createFileReloader(server: WxtDevServer) {
       // Rebuild entrypoints on change
       const allEntrypoints = await findEntrypoints();
       try {
+        console.log('create server log');
         const { output: newOutput } = await rebuild(
           allEntrypoints,
           // TODO: this excludes new entrypoints, so they're not built until the dev command is restarted

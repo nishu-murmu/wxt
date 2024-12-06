@@ -54,6 +54,8 @@ export async function findEntrypoints(): Promise<Entrypoint[]> {
   // Ensure consistent output
   relativePaths.sort();
 
+  console.log({ relativePaths });
+
   const pathGlobs = Object.keys(PATH_GLOB_TO_TYPE_MAP);
   const entrypointInfos: EntrypointInfo[] = relativePaths.reduce<
     EntrypointInfo[]

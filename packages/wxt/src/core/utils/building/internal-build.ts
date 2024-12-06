@@ -61,6 +61,7 @@ export async function internalBuild(): Promise<BuildOutput> {
   const groups = groupEntrypoints(entrypoints);
   await wxt.hooks.callHook('entrypoints:grouped', wxt, groups);
 
+  console.log('called inter');
   const { output, warnings } = await rebuild(entrypoints, groups, undefined);
   await wxt.hooks.callHook('build:done', wxt, output);
 

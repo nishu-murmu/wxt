@@ -653,6 +653,7 @@ export interface BaseContentScriptEntrypointOptions
    * @default "manifest"
    */
   registration?: PerBrowserOption<'manifest' | 'runtime'>;
+  permissions?: chrome.runtime.ManifestV3['permissions'];
 }
 
 export interface MainWorldContentScriptEntrypointOptions
