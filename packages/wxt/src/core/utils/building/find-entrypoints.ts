@@ -204,9 +204,8 @@ async function importHtmlEntrypoint(
 
   metaTags.forEach((tag) => {
     const name = tag.name;
-    if (!name.startsWith('manifest.')) return;
-
-    const key = camelCase(name.slice(9));
+    if (!name.startsWith('manifest.') && !name.startsWith('wxt.')) return;
+    const key = camelCase(name.split('.').at(-1) as string);
     try {
       res[key] = JSON5.parse(tag.content);
     } catch {
@@ -397,6 +396,8 @@ async function getSidepanelEntrypoint(
         defaultIcon: options.defaultIcon,
         defaultTitle: options.title,
         openAtInstall: options.openAtInstall,
+        matchPatterns: options.matchPatterns,
+        openOnActionClick: options.openOnActionClick,
       },
       wxt.config.browser,
     ),

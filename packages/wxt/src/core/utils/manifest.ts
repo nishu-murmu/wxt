@@ -353,11 +353,16 @@ function addEntrypoints(
         open_at_install: defaultSidepanel.options.openAtInstall,
       };
     } else if (wxt.config.manifestVersion === 3) {
-      // @ts-expect-error: Untyped
-      manifest.side_panel = {
-        default_path: page,
-      };
-      addPermission(manifest, 'sidePanel');
+      if (!defaultSidepanel.options?.matchPatterns?.length) {
+        // @ts-expect-error: Untyped
+        manifest.side_panel = {
+          default_path: page,
+        };
+        addPermission(manifest, 'sidePanel');
+      } else {
+        addPermission(manifest, 'sidePanel');
+        addPermission(manifest, 'tabs');
+      }
     } else {
       wxt.logger.warn(
         'Side panel not supported by Chromium using MV2. side_panel.default_path was not added to the manifest',

@@ -700,6 +700,8 @@ export interface SidepanelEntrypointOptions extends BaseEntrypointOptions {
   browserStyle?: PerBrowserOption<boolean>;
   defaultIcon?: string | Record<string, string>;
   defaultTitle?: PerBrowserOption<string>;
+  matchPatterns?: Array<string>;
+  openOnActionClick?: boolean;
 }
 
 export interface BaseEntrypoint {
