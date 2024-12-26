@@ -791,6 +791,13 @@ export type Entrypoint =
   | OptionsEntrypoint
   | SidepanelEntrypoint;
 
+export interface EntrypointInfo {
+  name: string;
+  /** Absolute path to the entrypoint file. */
+  inputPath: string;
+  type: Entrypoint['type'];
+}
+
 export type EntrypointGroup = Entrypoint | Entrypoint[];
 
 export type OnContentScriptStopped = (cb: () => void) => void;
@@ -1093,6 +1100,7 @@ export interface WxtBuilderServer {
    * Chokidar file watcher instance.
    */
   watcher: FSWatcher;
+  on?(event: string, callback: () => void): void;
 }
 
 export interface ServerInfo {
@@ -1184,6 +1192,12 @@ export interface WxtHooks {
     wxt: Wxt,
     manifest: Manifest.WebExtensionManifest,
   ) => HookResult;
+  /**
+   * Called once the names and paths of all entrypoints have been resolved.
+   * @param wxt The configured WXT object
+   * @param infos List of entrypoints found in the project's `entrypoints` directory
+   */
+  'entrypoints:found': (wxt: Wxt, infos: EntrypointInfo[]) => HookResult;
   /**
    * Called once all entrypoints have been loaded from the `entrypointsDir`.
    * Use `wxt.builder.importEntrypoint` to load entrypoint options from the
