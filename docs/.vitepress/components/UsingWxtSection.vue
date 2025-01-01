@@ -61,6 +61,8 @@ const chromeExtensionIds = [
   'eihpmapodnppeemkhkbhikmggfojdkjd', // Cursorful - Screen Recorder with Auto Zoom
   'hjjkgbibknbahijglkffklflidncplkn', // Show IP – Live View of Website IPs for Developers
   'ilbikcehnpkmldojkcmlldkoelofnbde', // Strong Password Generator
+  'ocllfkhcdopiafndigclebelbecaiocp', // ZenGram: Mindful Instagram, Your Way
+  'odffpjnpocjfcaclnenaaaddghkgijdb', // Blync: Preview Links, Selection Search, AI Assistant
 ];
 
 const { data, err, isLoading } = useListExtensionDetails(chromeExtensionIds);
