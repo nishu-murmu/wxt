@@ -57,6 +57,7 @@ export async function initialize(options: {
   input.packageManager ??= options.packageManager;
 
   const isExists = await fs.pathExists(input.directory);
+  const isInValid = input.directory.includes("'");
   if (isExists) {
     const isEmpty = (await fs.readdir(input.directory)).length === 0;
     if (!isEmpty) {
@@ -65,6 +66,10 @@ export async function initialize(options: {
       );
       process.exit(1);
     }
+  }
+  if (isInValid) {
+    consola.error(`The directory with ' character is not allowed. Aborted.`);
+    process.exit(1);
   }
   await cloneProject(input);
 
