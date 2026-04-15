@@ -4,11 +4,8 @@ import useListExtensionDetails, {
   ChromeExtension,
 } from '../composables/useListExtensionDetails';
 
-// Add extension IDs here. Order doesn't matter, will be sorted by weekly active users
-// During the transition from chrome.google.com/webstore to
-// chromewebstore.google.com, queue.wxt.dev might return null for your
-// extension. If it does, use "<slug>/<id>" instead of just the ID. The slug
-// can be retrieved from the URL of the item on chromewebstore.google.com
+// Add extension IDs here. Order doesn't matter, will be sorted by a combination of weekly active users and rating.
+// Change the commit message or PR title to: "docs: Added "[extension name]" to the homepage"
 const chromeExtensionIds = [
   'ocfdgncpifmegplaglcnglhioflaimkd', // GitHub: Better Line Counts
   'mgmdkjcljneegjfajchedjpdhbadklcf', // Anime Skip Player
@@ -16,7 +13,7 @@ const chromeExtensionIds = [
   'elfaihghhjjoknimpccccmkioofjjfkf', // StayFree - Website Blocker & Web Analytics
   'okifoaikfmpfcamplcfjkpdnhfodpkil', // Doozy: Ai Made Easy
   'lknmjhcajhfbbglglccadlfdjbaiifig', // tl;dv - Record, Transcribe & ChatGPT for Google Meet
-  'youtube中文配音/oglffgiaiekgeicdgkdlnlkhliajdlja', // Youtube中文配音
+  'oglffgiaiekgeicdgkdlnlkhliajdlja', // Youtube中文配音
   'agjnjboanicjcpenljmaaigopkgdnihi', // PreMiD
   'aiakblgmlabokilgljkglggnpflljdgp', // Markdown Sticky Notes
   'nomnkbngkijpffepcgbbofhcnafpkiep', // DocVersionRedirector
@@ -58,6 +55,40 @@ const chromeExtensionIds = [
   'phlfhkmdofajnbhgmbmjkbkdgppgoppb', // Monthly Bill Tracker
   'macmkmchfoclhpbncclinhjflmdkaoom', // Wandpen - Instantly improve your writing with AI
   'lhmgechokhmdekdpgkkemoeecelcaonm', // YouTube Hider - Remove Comments By Keywords, Usernames & Tools
+  'imgheieooppmahcgniieddodaliodeeg', // QA Compass - Record standardized bug reports easily
+  'npgghjedpchajflknnbngajkjkdhncdo', // aesthetic Notion, styled
+  'hmdcmlfkchdmnmnmheododdhjedfccka', // Eye Dropper
+  'eihpmapodnppeemkhkbhikmggfojdkjd', // Cursorful - Screen Recorder with Auto Zoom
+  'hjjkgbibknbahijglkffklflidncplkn', // Show IP – Live View of Website IPs for Developers
+  'ilbikcehnpkmldojkcmlldkoelofnbde', // Strong Password Generator
+  'ocllfkhcdopiafndigclebelbecaiocp', // ZenGram: Mindful Instagram, Your Way
+  'odffpjnpocjfcaclnenaaaddghkgijdb', // Blync: Preview Links, Selection Search, AI Assistant
+  'kofbbilhmnkcmibjbioafflgmpkbnmme', // HTML to Markdown - Convert webpages to markdown
+  'boecmgggeigllcdocgioijmleimjbfkg', // Walmart WFS Profit Calculator
+  'dlnjcbkmomenmieechnmgglgcljhoepd', // Youtube Live Chat Fullscreen
+  'keiealdacakpnbbljlmhfgcebmaadieg', // Python Code Runner
+  'hafcajcllbjnoolpfngclfmmgpikdhlm', // Monochromate
+  'bmoggiinmnodjphdjnmpcnlleamkfedj', // AliasVault - Open-Source Password & (Email) Alias Manager
+  'hlnhhamckimoaiekbglafiebkfimhapb', // SnapThePrice: AI-Powered Real-time Lowest Price Finder
+  'gdjampjdgjmbifnhldgcnccdjkcoicmg', // radiofrance - news & broadcasts (French), music (international)
+  'jlnhphlghikichhgbnkepenehbmloenb', // Blens - Time Tracker and AI Insight
+  'njnammmpdodmfkodnfpammnpdcbhnlcm', // Always Light Mode - Setting website always in light mode
+  'lblmfclcfniabobmamfkdogcgdagbhhb', // DesignPicker - Color Picker & Font Detector
+  'pamnlaoeobcmhkliljfaofekeddpmfoh', // Web to PDF
+  'jmbcbeepjfenihlocplnbmbhimcoooka', // Online CSV Viewer
+  'nkjcoophmpcmmgadnljnlpbpfdfacgbo', // YouTube Video Transcript
+  'lcaieahkjgeggeiihblhcjbbjlppgieh', // NetSuite Record Scripts
+  'gmocfknjllodfiomnljmaehcplnekhlo', // VueTracker
+  'ggcfemmoabhhelfkhknhbnkmeahloiod', // CanCopy - A web extension that allow you to copy any content from website
+  'modkelfkcfjpgbfmnbnllalkiogfofhb', // Language Learning with AI
+  'npfopljnjbamegincfjelhjhnonnjloo', // Bilibili Feed History Helper
+  'edkhpdceeinkcacjdgebjehipmnbomce', // NZBDonkey - The ultimate NZB file download tool
+  'cckggnbnimdbbpmdinkkgbbncopbloob', // WeChat Markdown Editor(微信 Markdown 编辑器)
+  'jcblcjolcojmfopefcighfmkkefbaofg', // Tab Grab
+  'eehmoikadcijkapfjocnhjclpbaindlb', // BrowserLens - https://browserlens.com/
+  'nhmbcmalgpkjbomhlhgdicanmkkaajmg', // Chatslator: Livestream Chat Translator
+  'mbamjfdjbcdgpopfnkkmlohadbbnplhm', // 公众号阅读增强器 - https://wxreader.honwhy.wang
+  'hannhecbnjnnbbafffmogdlnajpcomek', // 토탐정
 ];
 
 const { data, err, isLoading } = useListExtensionDetails(chromeExtensionIds);

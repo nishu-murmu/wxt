@@ -2,6 +2,7 @@ import type * as vite from 'vite';
 import {
   BuildStepOutput,
   Entrypoint,
+  EntrypointGroup,
   ResolvedConfig,
   WxtBuilder,
   WxtBuilderServer,
@@ -20,10 +21,13 @@ import {
 import { Hookable } from 'hookable';
 import { toArray } from '../../utils/arrays';
 import { safeVarName } from '../../utils/strings';
-import { importEntrypointFile } from '../../utils/building';
 import { ViteNodeServer } from 'vite-node/server';
 import { ViteNodeRunner } from 'vite-node/client';
 import { installSourcemapsSupport } from 'vite-node/source-map';
+import { createExtensionEnvironment } from '../../utils/environments';
+import { relative, join, extname, dirname } from 'node:path';
+import fs from 'fs-extra';
+import { normalizePath } from '../../utils/paths';
 
 export async function createViteBuilder(
   wxtConfig: ResolvedConfig,
@@ -65,6 +69,11 @@ export async function createViteBuilder(
       ignored: [`${wxtConfig.outBaseDir}/**`, `${wxtConfig.wxtDir}/**`],
     };
 
+    // TODO: Remove once https://github.com/wxt-dev/wxt/pull/1411 is merged
+    config.legacy ??= {};
+    // @ts-ignore: Untyped option:
+    config.legacy.skipWebSocketTokenCheck = true;
+
     const server = getWxtDevServer?.();
 
     config.plugins ??= [];
@@ -76,7 +85,6 @@ export async function createViteBuilder(
       wxtPlugins.tsconfigPaths(wxtConfig),
       wxtPlugins.noopBackground(),
       wxtPlugins.globals(wxtConfig),
-      wxtPlugins.resolveExtensionApi(wxtConfig),
       wxtPlugins.defineImportMeta(),
       wxtPlugins.wxtPluginLoader(wxtConfig),
       wxtPlugins.resolveAppConfig(wxtConfig),
@@ -167,10 +175,7 @@ export async function createViteBuilder(
     );
     return {
       mode: wxtConfig.mode,
-      plugins: [
-        wxtPlugins.multipageMove(entrypoints, wxtConfig),
-        wxtPlugins.entrypointGroupGlobals(entrypoints),
-      ],
+      plugins: [wxtPlugins.entrypointGroupGlobals(entrypoints)],
       build: {
         rollupOptions: {
           input: entrypoints.reduce<Record<string, string>>((input, entry) => {
@@ -220,54 +225,85 @@ export async function createViteBuilder(
     };
   };
 
+  const createViteNodeImporter = async (paths: string[]) => {
+    const baseConfig = await getBaseConfig({
+      excludeAnalysisPlugin: true,
+    });
+    // Disable dep optimization, as recommended by vite-node's README
+    baseConfig.optimizeDeps ??= {};
+    baseConfig.optimizeDeps.noDiscovery = true;
+    baseConfig.optimizeDeps.include = [];
+    const envConfig: vite.InlineConfig = {
+      plugins: paths.map((path) =>
+        wxtPlugins.removeEntrypointMainFunction(wxtConfig, path),
+      ),
+    };
+    const config = vite.mergeConfig(baseConfig, envConfig);
+    const server = await vite.createServer(config);
+    await server.pluginContainer.buildStart({});
+    const node = new ViteNodeServer(
+      // @ts-ignore: Some weird type error...
+      server,
+    );
+    installSourcemapsSupport({
+      getSourceMap: (source) => node.getSourceMap(source),
+    });
+    const runner = new ViteNodeRunner({
+      root: server.config.root,
+      base: server.config.base,
+      // when having the server and runner in a different context,
+      // you will need to handle the communication between them
+      // and pass to this function
+      fetchModule(id) {
+        return node.fetchModule(id);
+      },
+      resolveId(id, importer) {
+        return node.resolveId(id, importer);
+      },
+    });
+    return { runner, server };
+  };
+
+  const requireDefaultExport = (path: string, mod: any) => {
+    const relativePath = relative(wxtConfig.root, path);
+    if (mod?.default == null) {
+      const defineFn = relativePath.includes('.content')
+        ? 'defineContentScript'
+        : relativePath.includes('background')
+          ? 'defineBackground'
+          : 'defineUnlistedScript';
+
+      throw Error(
+        `${relativePath}: Default export not found, did you forget to call "export default ${defineFn}(...)"?`,
+      );
+    }
+  };
+
   return {
     name: 'Vite',
     version: vite.version,
     async importEntrypoint(path) {
-      switch (wxtConfig.entrypointLoader) {
-        default:
-        case 'jiti': {
-          return await importEntrypointFile(path);
-        }
-        case 'vite-node': {
-          const baseConfig = await getBaseConfig({
-            excludeAnalysisPlugin: true,
-          });
-          // Disable dep optimization, as recommended by vite-node's README
-          baseConfig.optimizeDeps ??= {};
-          baseConfig.optimizeDeps.noDiscovery = true;
-          baseConfig.optimizeDeps.include = [];
-          const envConfig: vite.InlineConfig = {
-            plugins: [wxtPlugins.removeEntrypointMainFunction(wxtConfig, path)],
-          };
-          const config = vite.mergeConfig(baseConfig, envConfig);
-          const server = await vite.createServer(config);
-          await server.pluginContainer.buildStart({});
-          const node = new ViteNodeServer(
-            // @ts-ignore: Some weird type error...
-            server,
-          );
-          installSourcemapsSupport({
-            getSourceMap: (source) => node.getSourceMap(source),
-          });
-          const runner = new ViteNodeRunner({
-            root: server.config.root,
-            base: server.config.base,
-            // when having the server and runner in a different context,
-            // you will need to handle the communication between them
-            // and pass to this function
-            fetchModule(id) {
-              return node.fetchModule(id);
-            },
-            resolveId(id, importer) {
-              return node.resolveId(id, importer);
-            },
-          });
-          const res = await runner.executeFile(path);
-          await server.close();
-          return res.default;
-        }
-      }
+      const env = createExtensionEnvironment();
+      const { runner, server } = await createViteNodeImporter([path]);
+      const res = await env.run(() => runner.executeFile(path));
+      await server.close();
+      requireDefaultExport(path, res);
+      return res.default;
+    },
+    async importEntrypoints(paths) {
+      const env = createExtensionEnvironment();
+      const { runner, server } = await createViteNodeImporter(paths);
+      const res = await env.run(() =>
+        Promise.all(
+          paths.map(async (path) => {
+            const mod = await runner.executeFile(path);
+            requireDefaultExport(path, mod);
+            return mod.default;
+          }),
+        ),
+      );
+      await server.close();
+      return res;
     },
     async build(group) {
       let entryConfig;
@@ -283,17 +319,18 @@ export async function createViteBuilder(
         buildConfig,
       );
       const result = await vite.build(buildConfig);
+      const chunks = getBuildOutputChunks(result);
       return {
         entrypoints: group,
-        chunks: getBuildOutputChunks(result),
+        chunks: await moveHtmlFiles(wxtConfig, group, chunks),
       };
     },
     async createServer(info) {
       const serverConfig: vite.InlineConfig = {
         server: {
+          host: info.host,
           port: info.port,
           strictPort: true,
-          host: info.hostname,
           origin: info.origin,
         },
       };
@@ -321,6 +358,9 @@ export async function createViteBuilder(
           },
         },
         watcher: viteServer.watcher,
+        on(event, cb) {
+          viteServer.httpServer?.on(event, cb);
+        },
       };
 
       return server;
@@ -360,4 +400,77 @@ function getRollupEntry(entrypoint: Entrypoint): string {
     return `${moduleId}?${entrypoint.inputPath}`;
   }
   return entrypoint.inputPath;
+}
+
+/**
+ * Ensures the HTML files output by a multipage build are in the correct location. This does two
+ * things:
+ *
+ * 1. Moves the HTML files to their final location at `<outDir>/<entrypoint.name>.html`.
+ * 2. Updates the bundle so it summarizes the files correctly in the returned build output.
+ *
+ * Assets (JS and CSS) are output to the `<outDir>/assets` directory, and don't need to be modified.
+ * HTML files access them via absolute URLs, so we don't need to update any import paths in the HTML
+ * files either.
+ */
+async function moveHtmlFiles(
+  config: ResolvedConfig,
+  group: EntrypointGroup,
+  chunks: BuildStepOutput['chunks'],
+): Promise<BuildStepOutput['chunks']> {
+  if (!Array.isArray(group)) return chunks;
+
+  const entryMap = group.reduce<Record<string, Entrypoint>>((map, entry) => {
+    const a = normalizePath(relative(config.root, entry.inputPath));
+    map[a] = entry;
+    return map;
+  }, {});
+
+  const movedChunks = await Promise.all(
+    chunks.map(async (chunk) => {
+      if (!chunk.fileName.endsWith('.html')) return chunk;
+
+      const entry = entryMap[chunk.fileName];
+      const oldBundlePath = chunk.fileName;
+      const newBundlePath = getEntrypointBundlePath(
+        entry,
+        config.outDir,
+        extname(chunk.fileName),
+      );
+      const oldAbsPath = join(config.outDir, oldBundlePath);
+      const newAbsPath = join(config.outDir, newBundlePath);
+      await fs.ensureDir(dirname(newAbsPath));
+      await fs.move(oldAbsPath, newAbsPath, { overwrite: true });
+
+      return {
+        ...chunk,
+        fileName: newBundlePath,
+      };
+    }),
+  );
+
+  // TODO: Optimize and only delete old path directories
+  removeEmptyDirs(config.outDir);
+
+  return movedChunks;
+}
+
+/**
+ * Recursively remove all directories that are empty/
+ */
+export async function removeEmptyDirs(dir: string): Promise<void> {
+  const files = await fs.readdir(dir);
+  for (const file of files) {
+    const filePath = join(dir, file);
+    const stats = await fs.stat(filePath);
+    if (stats.isDirectory()) {
+      await removeEmptyDirs(filePath);
+    }
+  }
+
+  try {
+    await fs.rmdir(dir);
+  } catch {
+    // noop on failure - this means the directory was not empty.
+  }
 }

@@ -1,4 +1,5 @@
 import { debounce } from 'perfect-debounce';
+import chokidar from 'chokidar';
 import {
   BuildStepOutput,
   EntrypointGroup,
@@ -28,6 +29,8 @@ import {
   getContentScriptJs,
   mapWxtOptionsToRegisteredContentScript,
 } from './utils/content-scripts';
+import { createKeyboardShortcuts } from './keyboard-shortcuts';
+import { isBabelSyntaxError, logBabelSyntaxError } from './utils/syntax-errors';
 
 /**
  * Creates a dev server and pre-builds all the files that need to exist before loading the extension.
@@ -50,12 +53,8 @@ export async function createServer(
 
 async function createServerInternal(): Promise<WxtDevServer> {
   const getServerInfo = (): ServerInfo => {
-    const { port, hostname } = wxt.config.dev.server!;
-    return {
-      port,
-      hostname,
-      origin: `http://${hostname}:${port}`,
-    };
+    const { host, port, origin } = wxt.config.dev.server!;
+    return { host, port, origin };
   };
 
   let [runner, builderServer] = await Promise.all([
@@ -69,8 +68,8 @@ async function createServerInternal(): Promise<WxtDevServer> {
   // Server instance must be created first so its reference can be added to the internal config used
   // to pre-render entrypoints
   const server: WxtDevServer = {
-    get hostname() {
-      return getServerInfo().hostname;
+    get host() {
+      return getServerInfo().host;
     },
     get port() {
       return getServerInfo().port;
@@ -94,29 +93,40 @@ async function createServerInternal(): Promise<WxtDevServer> {
       }
 
       await builderServer.listen();
-      wxt.logger.success(`Started dev server @ ${server.origin}`);
+      const hostInfo =
+        server.host === 'localhost' ? '' : ` (listening on ${server.host})`;
+      wxt.logger.success(`Started dev server @ ${server.origin}${hostInfo}`);
       await wxt.hooks.callHook('server:started', wxt, server);
 
-      await buildAndOpenBrowser();
-
-      // Register content scripts for the first time after the background starts up since they're not
-      // listed in the manifest
+      // Register content scripts for the first time after the background starts
+      // up since they're not listed in the manifest.
+      // Add listener before opening the browser to guarantee it is present when
+      // the extension sends back the initialization message.
       server.ws.on('wxt:background-initialized', () => {
         if (server.currentOutput == null) return;
         reloadContentScripts(server.currentOutput.steps, server);
       });
 
+      await buildAndOpenBrowser();
+
       // Listen for file changes and reload different parts of the extension accordingly
       const reloadOnChange = createFileReloader(server);
-      const keyboardsShortCuts = createKeyBoardShortCuts(server);
-      server.watcher.on('all', reloadOnChange);
-      keyboardsShortCuts.start();
+      server.watcher.on('all', async (...args) => {
+        await reloadOnChange(args[0], args[1]);
+
+        // Restart keyboard shortcuts after file is changed - for some reason they stop working.
+        keyboardShortcuts.start();
+      });
+
+      keyboardShortcuts.printHelp({
+        canReopenBrowser:
+          !wxt.config.runnerConfig.config.disabled && !!runner.canOpen?.(),
+      });
     },
 
     async stop() {
       wasStopped = true;
-      const keyboardsShortCuts = createKeyBoardShortCuts(server);
-      keyboardsShortCuts.stop();
+      keyboardShortcuts.stop();
       await runner.closeBrowser();
       await builderServer.close();
       await wxt.hooks.callHook('server:closed', wxt, server);
@@ -143,17 +153,35 @@ async function createServerInternal(): Promise<WxtDevServer> {
     async restartBrowser() {
       const keyboardsShortCuts = createKeyBoardShortCuts(server);
       await runner.closeBrowser();
-      keyboardsShortCuts.stop();
+      keyboardShortcuts.stop();
       await wxt.reloadConfig();
       runner = await createExtensionRunner();
       await runner.openBrowser();
-      keyboardsShortCuts.start();
+      keyboardShortcuts.start();
     },
   };
+  const keyboardShortcuts = createKeyboardShortcuts(server);
 
   const buildAndOpenBrowser = async () => {
-    // Build after starting the dev server so it can be used to transform HTML files
-    server.currentOutput = await internalBuild();
+    try {
+      // Build after starting the dev server so it can be used to transform HTML files
+      server.currentOutput = await internalBuild();
+    } catch (err) {
+      if (!isBabelSyntaxError(err)) {
+        throw err;
+      }
+      logBabelSyntaxError(err);
+      wxt.logger.info('Waiting for syntax error to be fixed...');
+      await new Promise<void>((resolve) => {
+        const watcher = chokidar.watch(err.id, { ignoreInitial: true });
+        watcher.on('all', () => {
+          watcher.close();
+          wxt.logger.info('Syntax error resolved, rebuilding...');
+          resolve();
+        });
+      });
+      return buildAndOpenBrowser();
+    }
 
     // Add file watchers for files not loaded by the dev server. See
     // https://github.com/wxt-dev/wxt/issues/428#issuecomment-1944731870
@@ -166,6 +194,8 @@ async function createServerInternal(): Promise<WxtDevServer> {
     // Open browser after everything is ready to go.
     await runner.openBrowser();
   };
+
+  builderServer.on?.('close', () => keyboardShortcuts.stop());
 
   return server;
 }
@@ -220,7 +250,7 @@ function createFileReloader(server: WxtDevServer) {
   const cb = async (event: string, path: string) => {
     changeQueue.push([event, path]);
 
-    await fileChangedMutex.runExclusive(async () => {
+    const reloading = fileChangedMutex.runExclusive(async () => {
       if (server.currentOutput == null) return;
 
       const fileChanges = changeQueue
@@ -288,6 +318,14 @@ function createFileReloader(server: WxtDevServer) {
       } catch {
         // Catch build errors instead of crashing. Don't log error either, builder should have already logged it
       }
+    });
+
+    await reloading.catch((error) => {
+      if (!isBabelSyntaxError(error)) {
+        throw error;
+      }
+      // Log syntax errors without crashing the server.
+      logBabelSyntaxError(error);
     });
   };
 

@@ -4,12 +4,14 @@ outline: deep
 
 # Content Scripts
 
+> To create a content script, see [Entrypoint Types](/guide/essentials/entrypoints#content-scripts).
+
 ## Context
 
-The first argument to a content script's `main` function is it's "context".
+The first argument to a content script's `main` function is its "context".
 
 ```ts
-// entrypoints/content.ts
+// entrypoints/example.content.ts
 export default defineContentScript({
   main(ctx) {},
 });
@@ -17,7 +19,7 @@ export default defineContentScript({
 
 This object is responsible for tracking whether or not the content script's context is "invalidated". Most browsers, by default, do not stop content scripts if the extension is uninstalled, updated, or disabled. When this happens, content scripts start reporting this error:
 
-```
+```plaintext
 Error: Extension context invalidated.
 ```
 
@@ -62,7 +64,7 @@ In regular web extensions, CSS for content scripts is usually a separate CSS fil
 In WXT, to add CSS to a content script, simply import the CSS file into your JS entrypoint, and WXT will automatically add the bundled CSS output to the `css` array.
 
 ```ts
-// entrypoints/content/index.ts
+// entrypoints/example.content/index.ts
 import './style.css';
 
 export default defineContentScript({
@@ -74,20 +76,20 @@ To create a standalone content script that only includes a CSS file:
 
 1. Create the CSS file: `entrypoints/example.content.css`
 2. Use the `build:manifestGenerated` hook to add the content script to the manifest:
-   ```ts
-   // wxt.config.ts
+
+   ```ts [wxt.config.ts]
    export default defineConfig({
      hooks: {
-       "build:manifestGenerated": (wxt, manifest) => {
+       'build:manifestGenerated': (wxt, manifest) => {
          manifest.content_scripts ??= [];
          manifest.content_scripts.push({
            // Build extension once to see where your CSS get's written to
-           css: ["content-scripts/example.css"],
-           matches: ["*://*/*"]
-         )
-       }
-     }
-   })
+           css: ['content-scripts/example.css'],
+           matches: ['*://*/*'],
+         });
+       },
+     },
+   });
    ```
 
 ## UI
@@ -198,6 +200,7 @@ export default defineContentScript({
 ```ts [Svelte]
 // entrypoints/example-ui.content/index.ts
 import App from './App.svelte';
+import { mount, unmount } from 'svelte';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -208,14 +211,11 @@ export default defineContentScript({
       anchor: 'body',
       onMount: (container) => {
         // Create the Svelte app inside the UI container
-        const app = new App({
-          target: container,
-        });
-        return app;
+        return mount(App, { target: container });
       },
       onRemove: (app) => {
         // Destroy the app when the UI is removed
-        app.$destroy();
+        unmount(app);
       },
     });
 
@@ -255,13 +255,13 @@ export default defineContentScript({
 
 :::
 
-See the [API Reference](/api/reference/wxt/client/functions/createIntegratedUi) for the complete list of options.
+See the [API Reference](/api/reference/wxt/utils/content-script-ui/integrated/functions/createIntegratedUi) for the complete list of options.
 
 ### Shadow Root
 
 Often in web extensions, you don't want your content script's CSS affecting the page, or vise-versa. The [`ShadowRoot`](https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot) API is ideal for this.
 
-WXT's [`createShadowRootUi`](/api/reference/wxt/client/functions/createShadowRootUi) abstracts all the `ShadowRoot` setup away, making it easy to create UIs whose styles are isolated from the page. It also supports an optional `isolateEvents` parameter to further isolate user interactions.
+WXT's [`createShadowRootUi`](/api/reference/wxt/utils/content-script-ui/shadow-root/functions/createShadowRootUi) abstracts all the `ShadowRoot` setup away, making it easy to create UIs whose styles are isolated from the page. It also supports an optional `isolateEvents` parameter to further isolate user interactions.
 
 To use `createShadowRootUi`, follow these steps:
 
@@ -379,6 +379,7 @@ export default defineContentScript({
 // 1. Import the style
 import './style.css';
 import App from './App.svelte';
+import { mount, unmount } from 'svelte';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -393,14 +394,11 @@ export default defineContentScript({
       anchor: 'body',
       onMount: (container) => {
         // Create the Svelte app inside the UI container
-        const app = new App({
-          target: container,
-        });
-        return app;
+        return mount(App, { target: container });
       },
       onRemove: (app) => {
         // Destroy the app when the UI is removed
-        app?.$destroy();
+        unmount(app);
       },
     });
 
@@ -444,7 +442,7 @@ export default defineContentScript({
 
 :::
 
-See the [API Reference](/api/reference/wxt/client/functions/createShadowRootUi) for the complete list of options.
+See the [API Reference](/api/reference/wxt/utils/content-script-ui/shadow-root/functions/createShadowRootUi) for the complete list of options.
 
 Full examples:
 
@@ -455,9 +453,10 @@ Full examples:
 
 If you don't need to run your UI in the same frame as the content script, you can use an IFrame to host your UI instead. Since an IFrame just hosts an HTML page, **_HMR is supported_**.
 
-WXT provides a helper function, [`createIframeUi`](/api/reference/wxt/client/functions/createIframeUi), which simplifies setting up the IFrame.
+WXT provides a helper function, [`createIframeUi`](/api/reference/wxt/utils/content-script-ui/iframe/functions/createIframeUi), which simplifies setting up the IFrame.
 
 1. Create an HTML page that will be loaded into your IFrame:
+
    ```html
    <!-- entrypoints/example-iframe.html -->
    <!doctype html>
@@ -472,9 +471,10 @@ WXT provides a helper function, [`createIframeUi`](/api/reference/wxt/client/fun
      </body>
    </html>
    ```
+
 1. Add the page to the manifest's `web_accessible_resources`:
-   ```ts
-   // wxt.config.ts
+
+   ```ts [wxt.config.ts]
    export default defineConfig({
      manifest: {
        web_accessible_resources: [
@@ -486,6 +486,7 @@ WXT provides a helper function, [`createIframeUi`](/api/reference/wxt/client/fun
      },
    });
    ```
+
 1. Create and mount the IFrame:
 
    ```ts
@@ -510,7 +511,7 @@ WXT provides a helper function, [`createIframeUi`](/api/reference/wxt/client/fun
    });
    ```
 
-See the [API Reference](/api/reference/wxt/client/functions/createIframeUi) for the complete list of options.
+See the [API Reference](/api/reference/wxt/utils/content-script-ui/iframe/functions/createIframeUi) for the complete list of options.
 
 ## Isolated World vs Main World
 
@@ -548,16 +549,35 @@ To use `injectScript`, we need two entrypoints, one content script and one unlis
 ```ts
 // entrypoints/example-main-world.ts
 export default defineUnlistedScript(() => {
-  console.log('Hello from the main world!');
+  console.log('Hello from the main world');
 });
 ```
 
 ```ts
 // entrypoints/example.content.ts
-export default defineContentScript(async () => {
-  await injectScript('/example-main-world.js', {
-    keepInDom: true,
-  });
+export default defineContentScript({
+  matches: ['*://*/*'],
+  async main() {
+    console.log('Injecting script...');
+    await injectScript('/example-main-world.js', {
+      keepInDom: true,
+    });
+    console.log('Done!');
+  },
+});
+```
+
+```json
+export default defineConfig({
+  manifest: {
+    // ...
+    web_accessible_resources: [
+      {
+        resources: ["example-main-world.js"],
+        matches: ["*://*/*"],
+      }
+    ]
+  }
 });
 ```
 
@@ -570,6 +590,39 @@ For MV3, `injectScript` is synchronous and the injected script will be evaluated
 
 However for MV2, `injectScript` has to `fetch` the script's text content and create an inline `<script>` block. This means for MV2, your script is injected asynchronously and it will not be evaluated at the same time as your content script's `run_at`.
 :::
+
+## Mounting UI to dynamic element
+
+In many cases, you may need to mount a UI to a DOM element that does not exist at the time the web page is initially loaded. To handle this, use the `autoMount` API to automatically mount the UI when the target element appears dynamically and unmount it when the element disappears. In WXT, the `anchor` option is used to target the element, enabling automatic mounting and unmounting based on its appearance and removal.
+
+```ts
+export default defineContentScript({
+  matches: ['<all_urls>'],
+
+  main(ctx) {
+    const ui = createIntegratedUi(ctx, {
+      position: 'inline',
+      // It observes the anchor
+      anchor: '#your-target-dynamic-element',
+      onMount: (container) => {
+        // Append children to the container
+        const app = document.createElement('p');
+        app.textContent = '...';
+        container.append(app);
+      },
+    });
+
+    // Call autoMount to observe anchor element for add/remove.
+    ui.autoMount();
+  },
+});
+```
+
+:::tip
+When the `ui.remove` is called, `autoMount` also stops.
+:::
+
+See the [API Reference](/api/reference/wxt/utils/content-script-ui/types/interfaces/ContentScriptUi#automount) for the complete list of options.
 
 ## Dealing with SPAs
 

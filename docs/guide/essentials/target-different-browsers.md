@@ -62,6 +62,7 @@ Here are some examples:
   ```
 
 - HTML file only built for all targets other than `chrome`:
+
   ```html
   <!doctype html>
   <html lang="en">
@@ -75,3 +76,5 @@ Here are some examples:
     </body>
   </html>
   ```
+
+Alternatively, you can use the [`filterEntrypoints` config](/api/reference/wxt/interfaces/InlineConfig#filterentrypoints) to list all the entrypoints you want to build.

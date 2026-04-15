@@ -4,7 +4,6 @@
 import { resolve } from 'path';
 import { faker } from '@faker-js/faker';
 import merge from 'lodash.merge';
-import { Commands, type Manifest } from 'wxt/browser';
 import {
   FsCache,
   ResolvedConfig,
@@ -22,10 +21,12 @@ import {
   UserManifest,
   Wxt,
   SidepanelEntrypoint,
+  BaseEntrypoint,
 } from '../../../types';
 import { mock } from 'vitest-mock-extended';
 import { vi } from 'vitest';
 import { setWxtForTesting } from '../../../core/wxt';
+import type { Browser } from '@wxt-dev/browser';
 
 faker.seed(import.meta.test.SEED);
 
@@ -50,7 +51,7 @@ export function fakeDir(root = process.cwd()): string {
   return resolve(root, faker.string.alphanumeric());
 }
 
-export const fakeEntrypoint = () =>
+export const fakeEntrypoint = (options?: DeepPartial<BaseEntrypoint>) =>
   faker.helpers.arrayElement([
     fakePopupEntrypoint,
     fakeGenericEntrypoint,
@@ -58,7 +59,7 @@ export const fakeEntrypoint = () =>
     fakeBackgroundEntrypoint,
     fakeContentScriptEntrypoint,
     fakeUnlistedScriptEntrypoint,
-  ])();
+  ])(options);
 
 export const fakeContentScriptEntrypoint =
   fakeObjectCreator<ContentScriptEntrypoint>(() => ({
@@ -207,13 +208,11 @@ export function fakeOutputFile(): OutputFile {
   return faker.helpers.arrayElement([fakeOutputAsset(), fakeOutputChunk()]);
 }
 
-export const fakeManifest = fakeObjectCreator<Manifest.WebExtensionManifest>(
-  () => ({
-    manifest_version: faker.helpers.arrayElement([2, 3]),
-    name: faker.string.alphanumeric(),
-    version: `${faker.number.int()}.${faker.number.int()}.${faker.number.int()}`,
-  }),
-);
+export const fakeManifest = fakeObjectCreator<Browser.runtime.Manifest>(() => ({
+  manifest_version: faker.helpers.arrayElement([2, 3]),
+  name: faker.string.alphanumeric(),
+  version: `${faker.number.int()}.${faker.number.int()}.${faker.number.int()}`,
+}));
 
 export const fakeUserManifest = fakeObjectCreator<UserManifest>(() => ({
   name: faker.string.alphanumeric(),
@@ -236,6 +235,7 @@ export const fakeResolvedConfig = fakeObjectCreator<ResolvedConfig>(() => {
 
   return {
     browser,
+    targetBrowsers: [],
     command,
     entrypointsDir: fakeDir(),
     modulesDir: fakeDir(),
@@ -244,6 +244,7 @@ export const fakeResolvedConfig = fakeObjectCreator<ResolvedConfig>(() => {
     env: { browser, command, manifestVersion, mode },
     fsCache: mock<FsCache>(),
     imports: {
+      disabled: faker.datatype.boolean(),
       eslintrc: {
         enabled: faker.helpers.arrayElement([false, 8, 9]),
         filePath: fakeFile(),
@@ -295,11 +296,8 @@ export const fakeResolvedConfig = fakeObjectCreator<ResolvedConfig>(() => {
       compressionLevel: 9,
       zipSources: false,
     },
-    transformManifest: () => {},
     userConfigMetadata: {},
     alias: {},
-    extensionApi: 'webextension-polyfill',
-    entrypointLoader: 'vite-node',
     experimental: {},
     dev: {
       reloadCommand: 'Alt+R',
@@ -323,9 +321,9 @@ export const fakeWxt = fakeObjectCreator<Wxt>(() => ({
 
 export const fakeWxtDevServer = fakeObjectCreator<WxtDevServer>(() => ({
   currentOutput: fakeBuildOutput(),
-  hostname: 'localhost',
-  origin: 'http://localhost:3000',
+  host: 'localhost',
   port: 3000,
+  origin: 'http://localhost:3000',
   reloadContentScript: vi.fn(),
   reloadExtension: vi.fn(),
   reloadPage: vi.fn(),
@@ -355,18 +353,24 @@ export const fakeBuildStepOutput = fakeObjectCreator<BuildStepOutput>(() => ({
   entrypoints: fakeArray(fakeEntrypoint),
 }));
 
-export const fakeManifestCommand = fakeObjectCreator<Commands.Command>(() => ({
-  description: faker.string.sample(),
-  shortcut: `${faker.helpers.arrayElement(['ctrl', 'alt'])}+${faker.number.int({
-    min: 0,
-    max: 9,
-  })}`,
-}));
+export const fakeManifestCommand = fakeObjectCreator<Browser.commands.Command>(
+  () => ({
+    description: faker.string.sample(),
+    suggested_key: {
+      default: `${faker.helpers.arrayElement(['ctrl', 'alt'])}+${faker.number.int(
+        {
+          min: 0,
+          max: 9,
+        },
+      )}`,
+    },
+  }),
+);
 
 export const fakeDevServer = fakeObjectCreator<WxtDevServer>(() => ({
-  hostname: 'localhost',
-  origin: 'http://localhost',
+  host: 'localhost',
   port: 5173,
+  origin: 'http://localhost:3000',
   reloadContentScript: vi.fn(),
   reloadExtension: vi.fn(),
   reloadPage: vi.fn(),

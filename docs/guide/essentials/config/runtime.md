@@ -5,10 +5,10 @@
 Define runtime configuration in a single place, `<srcDir>/app.config.ts`:
 
 ```ts
-import { defineAppConfig } from 'wxt/sandbox';
+import { defineAppConfig } from '#imports';
 
 // Define types for your config
-declare module 'wxt/sandbox' {
+declare module 'wxt/utils/define-app-config' {
   export interface WxtAppConfig {
     theme?: 'light' | 'dark';
   }
@@ -20,13 +20,13 @@ export default defineAppConfig({
 ```
 
 :::warning
-This file is committed to the repo, so don't put any secrets here. Instead, use [Environment Variables](#environment-variables)
+This file is committed to the repo, so don't put any secrets here. Instead, use [Environment Variables](/guide/essentials/config/environment-variables)
 :::
 
 To access runtime config, WXT provides the `useAppConfig` function:
 
 ```ts
-import { useAppConfig } from 'wxt/sandbox';
+import { useAppConfig } from '#imports';
 
 console.log(useAppConfig()); // { theme: "dark" }
 ```
@@ -36,7 +36,7 @@ console.log(useAppConfig()); // { theme: "dark" }
 You can use environment variables in the `app.config.ts` file.
 
 ```ts
-declare module 'wxt/sandbox' {
+declare module 'wxt/utils/define-app-config' {
   export interface WxtAppConfig {
     apiKey?: string;
     skipWelcome: boolean;

@@ -1,4 +1,3 @@
-/// <reference types="chrome" />
 /**
  * Simplified storage APIs with support for versioned fields, snapshots, metadata, and item definitions.
  *
@@ -7,13 +6,7 @@
  */
 import { dequal } from 'dequal/lite';
 import { Mutex } from 'async-mutex';
-
-const browser: typeof chrome =
-  // @ts-expect-error
-  globalThis.browser?.runtime?.id == null
-    ? globalThis.chrome
-    : // @ts-expect-error
-      globalThis.browser;
+import { browser, type Browser } from '@wxt-dev/browser';
 
 export const storage = createStorage();
 
@@ -267,7 +260,6 @@ function createStorage(): WxtStorage {
           async ([storageArea, updates]) => {
             const driver = getDriver(storageArea as StorageArea);
             const metaKeys = updates.map(({ key }) => getMetaKey(key));
-            console.log(storageArea, metaKeys);
             const existingMetas = await driver.getItems(metaKeys);
             const existingMetaMap = Object.fromEntries(
               existingMetas.map(({ key, value }) => [key, getMetaValue(value)]),
@@ -326,6 +318,10 @@ function createStorage(): WxtStorage {
         }),
       );
     },
+    clear: async (base) => {
+      const driver = getDriver(base);
+      await driver.clear();
+    },
     removeMeta: async (key, properties) => {
       const { driver, driverKey } = resolveKey(key);
       await removeMeta(driver, driverKey, properties);
@@ -355,7 +351,12 @@ function createStorage(): WxtStorage {
     defineItem: (key, opts?: WxtStorageItemOptions<any>) => {
       const { driver, driverKey } = resolveKey(key);
 
-      const { version: targetVersion = 1, migrations = {} } = opts ?? {};
+      const {
+        version: targetVersion = 1,
+        migrations = {},
+        onMigrationComplete,
+        debug = false,
+      } = opts ?? {};
       if (targetVersion < 1) {
         throw Error(
           'Storage item version cannot be less than 1. Initial versions should be set to 1, not 0.',
@@ -375,10 +376,15 @@ function createStorage(): WxtStorage {
             `Version downgrade detected (v${currentVersion} -> v${targetVersion}) for "${key}"`,
           );
         }
+        if (currentVersion === targetVersion) {
+          return;
+        }
 
-        console.debug(
-          `[@wxt-dev/storage] Running storage migration for ${key}: v${currentVersion} -> v${targetVersion}`,
-        );
+        if (debug === true) {
+          console.debug(
+            `[@wxt-dev/storage] Running storage migration for ${key}: v${currentVersion} -> v${targetVersion}`,
+          );
+        }
         const migrationsToRun = Array.from(
           { length: targetVersion - currentVersion },
           (_, i) => currentVersion + i + 1,
@@ -389,8 +395,13 @@ function createStorage(): WxtStorage {
             migratedValue =
               (await migrations?.[migrateToVersion]?.(migratedValue)) ??
               migratedValue;
+            if (debug === true) {
+              console.debug(
+                `[@wxt-dev/storage] Storage migration processed for version: v${migrateToVersion}`,
+              );
+            }
           } catch (err) {
-            throw Error(`v${migrateToVersion} migration failed for "${key}"`, {
+            throw new MigrationError(key, migrateToVersion, {
               cause: err,
             });
           }
@@ -399,10 +410,14 @@ function createStorage(): WxtStorage {
           { key: driverKey, value: migratedValue },
           { key: driverMetaKey, value: { ...meta, v: targetVersion } },
         ]);
-        console.debug(
-          `[@wxt-dev/storage] Storage migration completed for ${key} v${targetVersion}`,
-          { migratedValue },
-        );
+
+        if (debug === true) {
+          console.debug(
+            `[@wxt-dev/storage] Storage migration completed for ${key} v${targetVersion}`,
+            { migratedValue },
+          );
+        }
+        onMigrationComplete?.(migratedValue, targetVersion);
       };
       const migrationsDone =
         opts?.migrations == null
@@ -533,6 +548,9 @@ function createDriver(storageArea: StorageArea): WxtStorageDriver {
     },
     removeItems: async (keys) => {
       await getStorageArea().remove(keys);
+    },
+    clear: async () => {
+      await getStorageArea().clear();
     },
     snapshot: async () => {
       return await getStorageArea().get();
@@ -674,6 +692,12 @@ export interface WxtStorage {
       | { item: WxtStorageItem<any, any>; options?: RemoveItemOptions }
     >,
   ): Promise<void>;
+
+  /**
+   * Removes all items from the provided storage area.
+   */
+  clear(base: StorageArea): Promise<void>;
+
   /**
    * Remove the entire metadata for a key, or specific properties by name.
    *
@@ -712,15 +736,23 @@ export interface WxtStorage {
   /**
    * Define a storage item with a default value, type, or versioning.
    *
-   * Read full docs: https://wxt.dev/guide/extension-apis/storage.html#defining-storage-items
+   * Read full docs: https://wxt.dev/storage.html#defining-storage-items
    */
   defineItem<TValue, TMetadata extends Record<string, unknown> = {}>(
     key: StorageItemKey,
   ): WxtStorageItem<TValue | null, TMetadata>;
   defineItem<TValue, TMetadata extends Record<string, unknown> = {}>(
     key: StorageItemKey,
-    options: WxtStorageItemOptions<TValue>,
+    options: WxtStorageItemOptions<TValue> & { fallback: TValue },
   ): WxtStorageItem<TValue, TMetadata>;
+  defineItem<TValue, TMetadata extends Record<string, unknown> = {}>(
+    key: StorageItemKey,
+    options: WxtStorageItemOptions<TValue> & { defaultValue: TValue },
+  ): WxtStorageItem<TValue, TMetadata>;
+  defineItem<TValue, TMetadata extends Record<string, unknown> = {}>(
+    key: StorageItemKey,
+    options: WxtStorageItemOptions<TValue>,
+  ): WxtStorageItem<TValue | null, TMetadata>;
 }
 
 interface WxtStorageDriver {
@@ -730,6 +762,7 @@ interface WxtStorageDriver {
   setItems(values: Array<{ key: string; value: any }>): Promise<void>;
   removeItem(key: string): Promise<void>;
   removeItems(keys: string[]): Promise<void>;
+  clear(): Promise<void>;
   snapshot(): Promise<Record<string, unknown>>;
   restoreSnapshot(data: Record<string, unknown>): Promise<void>;
   watch<T>(key: string, cb: WatchCallback<T | null>): Unwatch;
@@ -845,10 +878,19 @@ export interface WxtStorageItemOptions<T> {
    * A map of version numbers to the functions used to migrate the data to that version.
    */
   migrations?: Record<number, (oldValue: any) => any>;
+  /**
+   * Print debug logs, such as migration process.
+   * @default false
+   */
+  debug?: boolean;
+  /**
+   * A callback function that runs on migration complete.
+   */
+  onMigrationComplete?: (migratedValue: T, targetVersion: number) => void;
 }
 
 export type StorageAreaChanges = {
-  [key: string]: chrome.storage.StorageChange;
+  [key: string]: Browser.storage.StorageChange;
 };
 
 /**

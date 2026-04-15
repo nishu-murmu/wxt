@@ -13,7 +13,6 @@ import {
   fakeWxtDevServer,
   setFakeWxt,
 } from '../testing/fake-objects';
-import { Manifest } from 'webextension-polyfill';
 import {
   BuildOutput,
   ContentScriptEntrypoint,
@@ -21,6 +20,8 @@ import {
   OutputAsset,
 } from '../../../types';
 import { wxt } from '../../wxt';
+import { mock } from 'vitest-mock-extended';
+import type { Browser } from '@wxt-dev/browser';
 
 const outDir = '/output';
 const contentScriptOutDir = '/output/content-scripts';
@@ -44,6 +45,7 @@ describe('Manifest Utils', () => {
             defaultTitle: 'Default Iitle',
           },
           outputDir: outDir,
+          skipped: false,
         });
 
       it('should include an action for mv3', async () => {
@@ -56,7 +58,7 @@ describe('Manifest Utils', () => {
             outDir,
           },
         });
-        const expected: Partial<Manifest.WebExtensionManifest> = {
+        const expected: Partial<Browser.runtime.Manifest> = {
           action: {
             default_icon: popup.options.defaultIcon,
             default_title: popup.options.defaultTitle,
@@ -209,6 +211,7 @@ describe('Manifest Utils', () => {
           chromeStyle: true,
           browserStyle: true,
         },
+        skipped: false,
       });
 
       it('should include a options_ui and chrome_style for chrome', async () => {
@@ -265,6 +268,7 @@ describe('Manifest Utils', () => {
           persistent: true,
           type: 'module',
         },
+        skipped: false,
       });
 
       describe('MV3', () => {
@@ -368,7 +372,7 @@ describe('Manifest Utils', () => {
 
     describe('icons', () => {
       it('should auto-discover icons with the correct name', async () => {
-        const entrypoints = fakeArray(fakeEntrypoint);
+        const entrypoints = fakeArray(() => fakeEntrypoint({ skipped: false }));
         const buildOutput = fakeBuildOutput({
           publicAssets: [
             { type: 'asset', fileName: 'icon-16.png' },
@@ -396,7 +400,7 @@ describe('Manifest Utils', () => {
       });
 
       it('should return undefined when no icons are found', async () => {
-        const entrypoints = fakeArray(fakeEntrypoint);
+        const entrypoints = fakeArray(() => fakeEntrypoint({ skipped: false }));
         const buildOutput = fakeBuildOutput({
           publicAssets: [
             { type: 'asset', fileName: 'logo.png' },
@@ -413,7 +417,7 @@ describe('Manifest Utils', () => {
       });
 
       it('should allow icons to be overwritten from the wxt.config.ts file', async () => {
-        const entrypoints = fakeArray(fakeEntrypoint);
+        const entrypoints = fakeArray(() => fakeEntrypoint({ skipped: false }));
         const buildOutput = fakeBuildOutput({
           publicAssets: [
             { type: 'asset', fileName: 'icon-16.png' },
@@ -832,29 +836,6 @@ describe('Manifest Utils', () => {
       });
 
       describe('registration', () => {
-        it('should throw an error when registration=runtime for MV2', async () => {
-          const cs: ContentScriptEntrypoint = fakeContentScriptEntrypoint({
-            options: {
-              registration: 'runtime',
-            },
-          });
-
-          const entrypoints = [cs];
-          const buildOutput: Omit<BuildOutput, 'manifest'> = {
-            publicAssets: [],
-            steps: [{ entrypoints: cs, chunks: [] }],
-          };
-          setFakeWxt({
-            config: {
-              manifestVersion: 2,
-            },
-          });
-
-          await expect(
-            generateManifest(entrypoints, buildOutput),
-          ).rejects.toThrowError();
-        });
-
         it('should add host_permissions instead of content_scripts when registration=runtime', async () => {
           const cs: ContentScriptEntrypoint = {
             type: 'content-script',
@@ -902,6 +883,7 @@ describe('Manifest Utils', () => {
         async (browser) => {
           const sidepanel = fakeSidepanelEntrypoint({
             outputDir: outDir,
+            skipped: false,
           });
           const buildOutput = fakeBuildOutput();
 
@@ -934,6 +916,7 @@ describe('Manifest Utils', () => {
         async (browser) => {
           const sidepanel = fakeSidepanelEntrypoint({
             outputDir: outDir,
+            skipped: false,
           });
           const buildOutput = fakeBuildOutput();
 
@@ -1105,31 +1088,6 @@ describe('Manifest Utils', () => {
         ).rejects.toThrow(
           'Non-MV3 web_accessible_resources detected: ["/icon.svg"]. When manually defining web_accessible_resources, define them as MV3 objects ({ matches: [...], resources: [...] }), and WXT will automatically convert them to MV2 when necessary.',
         );
-      });
-    });
-
-    describe('transformManifest option', () => {
-      it("should call the transformManifest option after the manifest is generated, but before it's returned", async () => {
-        const entrypoints: Entrypoint[] = [];
-        const buildOutput = fakeBuildOutput();
-        const newAuthor = 'Custom Author';
-        setFakeWxt({
-          config: {
-            transformManifest(manifest: any) {
-              manifest.author = newAuthor;
-            },
-          },
-        });
-        const expected = {
-          author: newAuthor,
-        };
-
-        const { manifest: actual } = await generateManifest(
-          entrypoints,
-          buildOutput,
-        );
-
-        expect(actual).toMatchObject(expected);
       });
     });
 
@@ -1505,7 +1463,7 @@ describe('Manifest Utils', () => {
             command: 'build',
           },
           server: {
-            hostname: 'localhost',
+            host: 'localhost',
             port: 3000,
             origin: 'http://localhost:3000',
           },
@@ -1529,8 +1487,8 @@ describe('Manifest Utils', () => {
             manifestVersion: 2,
           },
           server: fakeWxtDevServer({
+            host: 'localhost',
             port: 3000,
-            hostname: 'localhost',
             origin: 'http://localhost:3000',
           }),
         });
@@ -1557,7 +1515,7 @@ describe('Manifest Utils', () => {
             browser: 'chrome',
           },
           server: fakeWxtDevServer({
-            hostname: 'localhost',
+            host: 'localhost',
             port: 3000,
             origin: 'http://localhost:3000',
           }),
@@ -1580,6 +1538,91 @@ describe('Manifest Utils', () => {
           host_permissions: ['http://localhost/*'],
           permissions: ['tabs', 'scripting'],
         });
+      });
+
+      it('should convert MV3 CSP object to MV2 CSP string with localhost for MV2', async () => {
+        const entrypoints: Entrypoint[] = [];
+        const buildOutput = fakeBuildOutput();
+        const inputCsp =
+          "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';";
+        const expectedCsp =
+          "script-src 'self' 'wasm-unsafe-eval' http://localhost:3000; object-src 'self';";
+
+        // Setup WXT for Firefox and serve command
+        setFakeWxt({
+          config: {
+            browser: 'firefox',
+            command: 'serve',
+            manifestVersion: 2,
+            manifest: {
+              content_security_policy: {
+                extension_pages: inputCsp,
+              },
+            },
+          },
+          server: fakeWxtDevServer({
+            host: 'localhost',
+            port: 3000,
+            origin: 'http://localhost:3000',
+          }),
+        });
+
+        const { manifest: actual } = await generateManifest(
+          entrypoints,
+          buildOutput,
+        );
+
+        expect(actual.content_security_policy).toEqual(expectedCsp);
+      });
+    });
+
+    it('should not add skipped entrypoints to manifest', async () => {
+      const popup = fakePopupEntrypoint({ skipped: true });
+      const content = fakeContentScriptEntrypoint({ skipped: true });
+      const sidePanel = fakeSidepanelEntrypoint({ skipped: true });
+      const buildOutput = fakeBuildOutput();
+
+      setFakeWxt({
+        config: {
+          command: 'build',
+          manifestVersion: 3,
+        },
+      });
+
+      const { manifest } = await generateManifest(
+        [popup, content, sidePanel],
+        buildOutput,
+      );
+
+      expect(manifest.action).toBeUndefined();
+      expect(manifest.sidebar_action).toBeUndefined();
+      expect(manifest.content_scripts).toBeUndefined();
+    });
+
+    describe('manifest_version', () => {
+      it('should ignore and log a warning when someone sets `manifest_version` inside the manifest', async () => {
+        const buildOutput = fakeBuildOutput();
+        const expectedVersion = 2;
+        setFakeWxt({
+          logger: mock(),
+          config: {
+            command: 'build',
+            manifestVersion: expectedVersion,
+            manifest: {
+              manifest_version: 3,
+            },
+          },
+        });
+
+        const { manifest } = await generateManifest([], buildOutput);
+
+        expect(manifest.manifest_version).toBe(expectedVersion);
+        expect(wxt.logger.warn).toBeCalledTimes(1);
+        expect(wxt.logger.warn).toBeCalledWith(
+          expect.stringContaining(
+            '`manifest.manifest_version` config was set, but ignored',
+          ),
+        );
       });
     });
   });

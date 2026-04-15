@@ -1,5 +1,427 @@
 # Changelog
 
+## v0.20.7
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.6...wxt-v0.20.7)
+
+### 🚀 Enhancements
+
+- Add `@font-face` to be processed by `splitShadowRootCss` ([#1635](https://github.com/wxt-dev/wxt/pull/1635))
+- Add DisableLoadExtensionCommandLineSwitch flag to Chromium runner ([#1698](https://github.com/wxt-dev/wxt/pull/1698))
+
+### 🩹 Fixes
+
+- Improve CSS reset inside shadow roots ([da5cd325](https://github.com/wxt-dev/wxt/commit/da5cd325))
+
+### 🏡 Chore
+
+- Stop using PNPM catalog ([#1644](https://github.com/wxt-dev/wxt/pull/1644))
+- Upgrade `@aklinker1/check` to v2 ([#1647](https://github.com/wxt-dev/wxt/pull/1647))
+- **deps:** Update all dependencies ([#1648](https://github.com/wxt-dev/wxt/pull/1648))
+- Change browser workspace dependency to `^` ([c7335add](https://github.com/wxt-dev/wxt/commit/c7335add))
+
+### ❤️ Contributors
+
+- Richard Lee ([@dlackty](https://github.com/dlackty))
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+- Seaders ([@seaders](https://github.com/seaders))
+
+## v0.20.6
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.5...wxt-v0.20.6)
+
+## v0.20.5
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.4...wxt-v0.20.5)
+
+### 🩹 Fixes
+
+- Don't use crypto.randUUID for shadow root UIs ([3577c0b](https://github.com/wxt-dev/wxt/commit/3577c0b))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+
+## v0.20.4
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.3...wxt-v0.20.4)
+
+### 🚀 Enhancements
+
+- Ignore popup/index.ts instead of erroring ([#1520](https://github.com/wxt-dev/wxt/pull/1520))
+- Ignore elements with a `vite-ignore` or `wxt-ignore` attribute ([#1603](https://github.com/wxt-dev/wxt/pull/1603))
+- Add `{{packageVersion}}` as template variable ([#1604](https://github.com/wxt-dev/wxt/pull/1604))
+
+### 🩹 Fixes
+
+- Adding missing `""` to `PublicPath` and `browser.runtime.getUrl` ([#1597](https://github.com/wxt-dev/wxt/pull/1597))
+- Fix CORS error in Firefox ([#1607](https://github.com/wxt-dev/wxt/pull/1607))
+
+### 📖 Documentation
+
+- **Content Script UI:** Add additional details about when `onRemove` is called ([656a9b3](https://github.com/wxt-dev/wxt/commit/656a9b3))
+
+### ❤️ Contributors
+
+- Yunsup Sim ([@SimYunSup](https://github.com/SimYunSup))
+- ТΞNSΛI ([@Tensai75](https://github.com/Tensai75))
+- Nishu ([@nishu-murmu](https://github.com/nishu-murmu))
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+
+## v0.20.3
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.2...wxt-v0.20.3)
+
+### 🚀 Enhancements
+
+- Automatically place document-level CSS outside shadow root ([#1594](https://github.com/wxt-dev/wxt/pull/1594))
+
+### 🩹 Fixes
+
+- Fix double hashing of inline script keys ([b0f4ac8](https://github.com/wxt-dev/wxt/commit/b0f4ac8))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+
+## v0.20.2
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.1...wxt-v0.20.2)
+
+### 🩹 Fixes
+
+- Fix hashing issue with inline scripts ([#1591](https://github.com/wxt-dev/wxt/pull/1591))
+
+### 📖 Documentation
+
+- Fix typo in changelog ([acb6cd1](https://github.com/wxt-dev/wxt/commit/acb6cd1))
+
+### ❤️ Contributors
+
+- Yunsup Sim ([@SimYunSup](https://github.com/SimYunSup))
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+
+## v0.20.1
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.20.0...wxt-v0.20.1)
+
+### 🚀 Enhancements
+
+- Enable wxt usage inside of devcontainers ([#1406](https://github.com/wxt-dev/wxt/pull/1406))
+- Type-safe `import.meta.env.BROWSER` with new `targetBrowsers` config ([#1574](https://github.com/wxt-dev/wxt/pull/1574))
+
+### 🩹 Fixes
+
+- Don't remove top-level destructured variable definitions when importing entrypoints ([#1561](https://github.com/wxt-dev/wxt/pull/1561))
+- Add JSDoc type annotation to auto-imports for ESlint ([#1558](https://github.com/wxt-dev/wxt/pull/1558))
+
+### 📖 Documentation
+
+- Fix knowledge file generation ([#1550](https://github.com/wxt-dev/wxt/pull/1550))
+
+### 🏡 Chore
+
+- **deps:** Update all dependencies ([#1568](https://github.com/wxt-dev/wxt/pull/1568))
+- Update comment ([61b42ef](https://github.com/wxt-dev/wxt/commit/61b42ef))
+
+### ❤️ Contributors
+
+- 7sDream ([@7sDream](https://github.com/7sDream))
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+- Nostro ([@nostrorom](https://github.com/nostrorom))
+- Khalil Yao ([@yyz945947732](https://github.com/yyz945947732))
+- Alec WM ([@alecdwm](https://github.com/alecdwm))
+
+## v0.20.0
+
+Excited to release the next major version of WXT! Follow the [Upgrade guide](https://wxt.dev/guide/resources/upgrading.html) to update!
+
+---
+
+[⚠️ breaking changes](https://wxt.dev/guide/resources/upgrading.html) &bull; [compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.29...wxt-v0.20.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Remove `webextension-polyfill` ([#1084](https://github.com/wxt-dev/wxt/pull/1084))
+- ⚠️  Individual exports and introduce the `#imports` module ([#1258](https://github.com/wxt-dev/wxt/pull/1258))
+- ⚠️  Reset inherited styles inside shadow root ([#1269](https://github.com/wxt-dev/wxt/pull/1269))
+- ⚠️  Auto-import types ([#1315](https://github.com/wxt-dev/wxt/pull/1315))
+
+### 🩹 Fixes
+
+- ⚠️  Add suffix to non-production output directories ([#1086](https://github.com/wxt-dev/wxt/pull/1086))
+- ⚠️  Remove deprecated `jiti` entrypoint loader ([#1087](https://github.com/wxt-dev/wxt/pull/1087))
+- ⚠️  Rename `runner` to `webExt` ([#1180](https://github.com/wxt-dev/wxt/pull/1180))
+- ⚠️  Remove `transformManfiest` option ([#1181](https://github.com/wxt-dev/wxt/pull/1181))
+- Remove unnecessary `VITE_CJS_IGNORE_WARNING` flag ([b0ef178](https://github.com/wxt-dev/wxt/commit/b0ef178))
+- ⚠️  Make `publicDir` and `modulesDir` relative to project root ([#1216](https://github.com/wxt-dev/wxt/pull/1216))
+- ⚠️  Move `wxt/storage` to `wxt/utils/storage` ([#1271](https://github.com/wxt-dev/wxt/pull/1271))
+- Add back `ExtensionRunnerConfig` as deprecated ([#1311](https://github.com/wxt-dev/wxt/pull/1311))
+- Missing browser in shadow-root file ([#1317](https://github.com/wxt-dev/wxt/pull/1317))
+
+### 📖 Documentation
+
+- Fix api reference for `wxt/utils/storage` ([99b5076](https://github.com/wxt-dev/wxt/commit/99b5076))
+- Fix broken links ([82d8024](https://github.com/wxt-dev/wxt/commit/82d8024))
+
+### 🏡 Chore
+
+- Fix type errors ([aad17c8](https://github.com/wxt-dev/wxt/commit/aad17c8))
+- Remove duplicate test ([e54df0a](https://github.com/wxt-dev/wxt/commit/e54df0a))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](https://github.com/aklinker1))
+- 1natsu ([@1natsu172](https://github.com/1natsu172))
+
+## v0.19.29
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.28...wxt-v0.19.29)
+
+### 🚀 Enhancements
+
+- Tolerate syntax errors ([#1437](https://github.com/wxt-dev/wxt/pull/1437))
+
+### 🩹 Fixes
+
+- Support `registration: "runtime"` for MV2 ([#1431](https://github.com/wxt-dev/wxt/pull/1431))
+
+### ❤️ Contributors
+
+- Thomas ([@harmonyharmo](http://github.com/harmonyharmo))
+- Alec Larson ([@aleclarson](http://github.com/aleclarson))
+
+## v0.19.28
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.27...wxt-v0.19.28)
+
+### 🩹 Fixes
+
+- Ignore `manifest.manifest_version` option and warn about incorrect usage ([#1419](https://github.com/wxt-dev/wxt/pull/1419))
+- Resolve wxt modules from the root ([#1417](https://github.com/wxt-dev/wxt/pull/1417))
+- Properly detect and reload changed files when using Vite's `?suffix` imports ([#1432](https://github.com/wxt-dev/wxt/pull/1432))
+- Regression on variable expansion in dotenv files ([#1449](https://github.com/wxt-dev/wxt/pull/1449))
+- Allow vite 6.0.9+ ([#1497](https://github.com/wxt-dev/wxt/pull/1497))
+
+### 📖 Documentation
+
+- Host pre-aggregated LLM knowledge files ([#1355](https://github.com/wxt-dev/wxt/pull/1355))
+
+### 🏡 Chore
+
+- Add funding links to `package.json` files ([#1446](https://github.com/wxt-dev/wxt/pull/1446))
+- Use PNPM 10's new catelog feature ([#1493](https://github.com/wxt-dev/wxt/pull/1493))
+- Move production dependencies to PNPM 10 catelog ([#1494](https://github.com/wxt-dev/wxt/pull/1494))
+- **deps:** Upgrade to Vite 6 and related dependencies ([#1496](https://github.com/wxt-dev/wxt/pull/1496))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- Stefan Maric ([@stefanmaric](https://github.com/stefanmaric))
+- Okinea Dev ([@okineadev](http://github.com/okineadev))
+- 1natsu ([@1natsu172](http://github.com/1natsu172))
+- Alec Larson ([@aleclarson](http://github.com/aleclarson))
+
+## v0.19.27
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.26...wxt-v0.19.27)
+
+### 🩹 Fixes
+
+- Allow `vite-node@^3.0.0` ([#1378](https://github.com/wxt-dev/wxt/pull/1378))
+- Use path triple slash directive for types that are referenced via path ([#1407](https://github.com/wxt-dev/wxt/pull/1407))
+- Support `publish-browser-extension` v3.0.0 ([ac92d40](https://github.com/wxt-dev/wxt/commit/ac92d40))
+- Respect `inlineConfig.mode` when setting NODE_ENV ([#1416](https://github.com/wxt-dev/wxt/pull/1416))
+- Auto-import does not work when using `@vitejs/plugin-vue` alone ([#1412](https://github.com/wxt-dev/wxt/pull/1412))
+
+### ❤️ Contributors
+
+- Jaguar Zhou ([@aiktb](http://github.com/aiktb))
+- Alec Larson ([@aleclarson](http://github.com/aleclarson))
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- St3h3n <st3h3n@gmail.com>
+- Eli ([@lishaduck](http://github.com/lishaduck))
+
+## v0.19.26
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.25...wxt-v0.19.26)
+
+### 🩹 Fixes
+
+- **context:** Deduplicate `wxt:content-script-started` ([#1364](https://github.com/wxt-dev/wxt/pull/1364))
+
+### ❤️ Contributors
+
+- Deniz Uğur ([@DenizUgur](http://github.com/DenizUgur))
+
+## v0.19.25
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.24...wxt-v0.19.25)
+
+### 🩹 Fixes
+
+- Drop support for vite 6.0.9+ until websocket fix is finished ([8e2badc](https://github.com/wxt-dev/wxt/commit/8e2badc))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+
+## v0.19.24
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.23...wxt-v0.19.24)
+
+### 🩹 Fixes
+
+- **init:** Remove "experimental" from bun package manager ([b150a52](https://github.com/wxt-dev/wxt/commit/b150a52))
+- **web-ext:** Correctly pass `browserConsole` option to open devtools in Firefox ([#1308](https://github.com/wxt-dev/wxt/pull/1308))
+- `autoMount` not working if anchor is already present ([#1350](https://github.com/wxt-dev/wxt/pull/1350))
+
+### 🏡 Chore
+
+- Fix typo in CLI docs ([028c601](https://github.com/wxt-dev/wxt/commit/028c601))
+
+### ❤️ Contributors
+
+- 1natsu ([@1natsu172](http://github.com/1natsu172))
+- Paulo Pinto ([@psrpinto](https://github.com/psrpinto))
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+
+## v0.19.23
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.22...wxt-v0.19.23)
+
+### 🚀 Enhancements
+
+- **hooks:** Move `entrypoints:resolved` before debug logs and add `entrypoints:found` ([#1292](https://github.com/wxt-dev/wxt/pull/1292))
+
+### 🩹 Fixes
+
+- Allow runtime registered content scripts to not have `matches` ([#1306](https://github.com/wxt-dev/wxt/pull/1306))
+- Properly close readline instance on close ([#1278](https://github.com/wxt-dev/wxt/pull/1278))
+
+### 📖 Documentation
+
+- Sync READMEs ([27298b7](https://github.com/wxt-dev/wxt/commit/27298b7))
+
+### 🏡 Chore
+
+- Simplify keyboard shortcuts ([#1284](https://github.com/wxt-dev/wxt/pull/1284))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- Abhigyan Trips ([@abhigyantrips](http://github.com/abhigyantrips))
+
+## v0.19.22
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.21...wxt-v0.19.22)
+
+### 🩹 Fixes
+
+- Exclude entire `import.meta.env` object from content script output ([#1267](https://github.com/wxt-dev/wxt/pull/1267))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+
+## v0.19.21
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.20...wxt-v0.19.21)
+
+### 🩹 Fixes
+
+- Exclude skipped entrypoints from manifest ([#1265](https://github.com/wxt-dev/wxt/pull/1265))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+
+## v0.19.20
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.19...wxt-v0.19.20)
+
+### 🚀 Enhancements
+
+- `autoMount` content script UIs ([#1210](https://github.com/wxt-dev/wxt/pull/1210))
+
+### 🩹 Fixes
+
+- Only show reopen browser shortcut when it can be done ([#1263](https://github.com/wxt-dev/wxt/pull/1263))
+- Import entrypoint improvements ([#1207](https://github.com/wxt-dev/wxt/pull/1207))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- 1natsu ([@1natsu172](http://github.com/1natsu172))
+
+## v0.19.19
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.18...wxt-v0.19.19)
+
+### 🚀 Enhancements
+
+- Keyboard shortcut to reopen the browser without restarting the dev command ([#1211](https://github.com/wxt-dev/wxt/pull/1211))
+
+### 🩹 Fixes
+
+- Prevent changing dev server port when reloading config ([#1241](https://github.com/wxt-dev/wxt/pull/1241))
+- Ensure content scripts are registered immediately in dev mode ([#1253](https://github.com/wxt-dev/wxt/pull/1253))
+- Exclude skipped entrypoints from Firefox sources zip ([#1238](https://github.com/wxt-dev/wxt/pull/1238))
+
+### ❤️ Contributors
+
+- Nishu ([@nishu-murmu](http://github.com/nishu-murmu))
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+
+## v0.19.18
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.17...wxt-v0.19.18)
+
+### 🩹 Fixes
+
+- Correct `dev.reloadCommand` restriction to consider only commands with suggested keys ([#1226](https://github.com/wxt-dev/wxt/pull/1226))
+
+### 🌊 Types
+
+- Add overloads to `ContentScriptContext#addEventListener` for different targets ([#1245](https://github.com/wxt-dev/wxt/pull/1245))
+
+### 🏡 Chore
+
+- Refactor `findEntrypoints` to return all entrypoints with `skipped` set properly ([#1244](https://github.com/wxt-dev/wxt/pull/1244))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- Jaguar Zhou ([@aiktb](http://github.com/aiktb))
+
+## v0.19.17
+
+[compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.16...wxt-v0.19.17)
+
+### 🚀 Enhancements
+
+- New `server:created`, `server:started`, and `server:closed` hooks ([#1179](https://github.com/wxt-dev/wxt/pull/1179))
+
+### 🩹 Fixes
+
+- Re-initialize WXT modules correctly during development ([#1176](https://github.com/wxt-dev/wxt/pull/1176))
+- ESLint config being generated when ESLint is not installed. ([#1198](https://github.com/wxt-dev/wxt/pull/1198))
+- Update `vite` dependency range to support v6 ([#1215](https://github.com/wxt-dev/wxt/pull/1215))
+- Automatically convert MV3 `content_security_policy` to MV2 ([#1168](https://github.com/wxt-dev/wxt/pull/1168))
+- Correctly remove child elements with integrated UI remove ([#1219](https://github.com/wxt-dev/wxt/pull/1219))
+- Make content script `matches` optional ([#1220](https://github.com/wxt-dev/wxt/pull/1220))
+
+### 📖 Documentation
+
+- Fix analyze typo in type ([#1187](https://github.com/wxt-dev/wxt/pull/1187))
+
+### ❤️ Contributors
+
+- Aaron ([@aklinker1](http://github.com/aklinker1))
+- 1natsu ([@1natsu172](http://github.com/1natsu172))
+- Nishu ([@nishu-murmu](https://github.com/nishu-murmu))
+- Florian Metz ([@Timeraa](http://github.com/Timeraa))
+
 ## v0.19.16
 
 [compare changes](https://github.com/wxt-dev/wxt/compare/wxt-v0.19.15...wxt-v0.19.16)

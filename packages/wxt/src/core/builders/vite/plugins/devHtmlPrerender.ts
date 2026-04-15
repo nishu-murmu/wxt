@@ -4,10 +4,10 @@ import { getEntrypointName } from '../../../utils/entrypoints';
 import { parseHTML } from 'linkedom';
 import { dirname, relative, resolve } from 'node:path';
 import { normalizePath } from '../../../utils/paths';
-import { murmurHash } from 'ohash';
+import { hash } from 'ohash';
 
 // Stored outside the plugin to effect all instances of the devHtmlPrerender plugin.
-const inlineScriptContents: Record<number, string> = {};
+const inlineScriptContents: Record<string, string> = {};
 
 /**
  * Pre-renders the HTML entrypoints when building the extension to connect to the dev server.
@@ -85,13 +85,13 @@ export function devHtmlPrerender(
         inlineScripts.forEach((script) => {
           // Save the text content for later
           const textContent = script.textContent ?? '';
-          const hash = murmurHash(textContent);
-          inlineScriptContents[hash] = textContent;
+          const key = hash(textContent);
+          inlineScriptContents[key] = textContent;
 
           // Replace unsafe inline script
           const virtualScript = document.createElement('script');
           virtualScript.type = 'module';
-          virtualScript.src = `${server.origin}/@id/${virtualInlineScript}?${hash}`;
+          virtualScript.src = `${server.origin}/@id/${virtualInlineScript}?${key}`;
           script.replaceWith(virtualScript);
         });
 
@@ -111,7 +111,7 @@ export function devHtmlPrerender(
       },
     },
     {
-      name: 'wxt:virtualize-react-refresh',
+      name: 'wxt:virtualize-inline-scripts',
       apply: 'serve',
       resolveId(id) {
         // Resolve inline scripts
@@ -127,9 +127,9 @@ export function devHtmlPrerender(
       load(id) {
         // Resolve virtualized inline scripts
         if (id.startsWith(resolvedVirtualInlineScript)) {
-          // id="virtual:wxt-inline-script?<hash>"
-          const hash = Number(id.substring(id.indexOf('?') + 1));
-          return inlineScriptContents[hash];
+          // id="virtual:wxt-inline-script?<key>"
+          const key = id.substring(id.indexOf('?') + 1);
+          return inlineScriptContents[key];
         }
 
         // Ignore chunks during HTML file pre-rendering
@@ -150,6 +150,13 @@ export function pointToDevServer(
   attr: string,
 ) {
   document.querySelectorAll(querySelector).forEach((element) => {
+    if (
+      element.hasAttribute('vite-ignore') ||
+      element.hasAttribute('wxt-ignore')
+    ) {
+      element.removeAttribute('wxt-ignore');
+      return;
+    }
     const src = element.getAttribute(attr);
     if (!src || isUrl(src)) return;
 

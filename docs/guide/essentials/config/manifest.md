@@ -1,10 +1,17 @@
 # Manifest
 
-In WXT, there is no `manifest.json` file in your source code. Instead, WXT generates it during the build process based off files in your project.
+In WXT, there is no `manifest.json` file in your source code. Instead, WXT generates the manifest from multiple sources:
 
-## Manifest Config
+- Global options [defined in your `wxt.config.ts` file](#global-options)
+- Entrypoint-specific options [defined in your entrypoints](/guide/essentials/entrypoints#defining-manifest-options)
+- [WXT Modules](/guide/essentials/wxt-modules) added to your project can modify your manifest
+- [Hooks](/guide/essentials/config/hooks) defined in your project can modify your manifest
 
-To manually add a property to the `manifest.json` output during builds, use the `manifest` config inside `wxt.config.ts`:
+Your extension's `manifest.json` will be output to `.output/{target}/manifest.json` when running `wxt build`.
+
+## Global Options
+
+To add a property to your manifest, use the `manifest` config inside your `wxt.config.ts`:
 
 ```ts
 export default defineConfig({
@@ -121,7 +128,7 @@ If a version is not present in your `package.json`, it defaults to `"0.0.0"`.
 
 WXT automatically discovers your extension's icon by looking at files in the `public/` directory:
 
-```
+```plaintext
 public/
 ├─ icon-16.png
 ├─ icon-24.png
@@ -130,7 +137,7 @@ public/
 └─ icon-128.png
 ```
 
-Specifically, if an icon must match one of these regex to be discovered:
+Specifically, an icon must match one of these regex to be discovered:
 
 <<< @/../packages/wxt/src/core/utils/manifest.ts#snippet
 
@@ -156,6 +163,11 @@ Alternatively, you can use [`@wxt-dev/auto-icons`](https://www.npmjs.com/package
 
 > [Chrome docs](https://developer.chrome.com/docs/extensions/reference/permissions/)
 
+Most of the time, you need to manually add permissions to your manifest. Only in a few specific situations are permissions added automatically:
+
+- During development: the `tabs` and `scripting` permissions will be added to enable hot reloading.
+- When a `sidepanel` entrypoint is present: The `sidepanel` permission is added.
+
 ```ts
 export default defineConfig({
   manifest: {
@@ -171,7 +183,7 @@ export default defineConfig({
 ```ts
 export default defineConfig({
   manifest: {
-    permissions: ['storage', 'tabs'],
+    host_permissions: ['https://www.google.com/*'],
   },
 });
 ```
@@ -211,22 +223,7 @@ By default, whenever an `action` is generated, WXT falls back to `browser_action
 
 ### Action With Popup
 
-To generate a manifest where a UI appears after clicking the icon, just create a [Popup entrypoint](/guide/essentials/entrypoints#popup).
-
-```ts
-export default defineConfig({
-  hooks: {
-    build: {
-      manifestGenerated(manifest) {
-        // Update the manifest variable by reference
-        manifest.name = 'Overriden name';
-      },
-    },
-  },
-});
-```
-
-If you want to use a `page_action` for MV2, add the following meta tag to the HTML document's head:
+To generate a manifest where a UI appears after clicking the icon, just create a [Popup entrypoint](/guide/essentials/entrypoints#popup). If you want to use a `page_action` for MV2, add the following meta tag to the HTML document's head:
 
 ```html
 <meta name="manifest.type" content="page_action" />
@@ -238,6 +235,7 @@ If you want to use the `activeTab` permission or the `browser.action.onClicked` 
 
 1. Delete the [Popup entrypoint](/guide/essentials/entrypoints#popup) if it exists
 2. Add the `action` key to your manifest:
+
    ```ts
    export default defineConfig({
      manifest: {

@@ -1,13 +1,13 @@
 import type * as vite from 'vite';
-import type { Manifest, Scripting } from 'wxt/browser';
 import { UnimportOptions, Import } from 'unimport';
 import { LogLevel } from 'consola';
-import type { ContentScriptContext } from './client/content-scripts/content-script-context';
+import type { ContentScriptContext } from './utils/content-script-context';
 import type { PluginVisualizerOptions } from '@aklinker1/rollup-plugin-visualizer';
-import type { FSWatcher } from 'chokidar';
 import { ResolvedConfig as C12ResolvedConfig } from 'c12';
 import { Hookable, NestedHooks } from 'hookable';
 import type * as Nypm from 'nypm';
+import { ManifestContentScript } from './core/utils/types';
+import type { Browser } from '@wxt-dev/browser';
 
 export interface InlineConfig {
   /**
@@ -38,13 +38,14 @@ export interface InlineConfig {
    */
   entrypointsDir?: string;
   /**
-   * @default "${config.srcDir}/modules"
+   * @default "${config.root}/modules"
    */
   modulesDir?: string;
   /**
    * A list of entrypoint names (`"popup"`, `"options"`, etc.) to build. Will speed up the build if
    * your extension has lots of entrypoints, and you don't need to build all of them to develop a
    * feature.
+   * If specified, this completely overrides the `include`/`exclude` option provided per-entrypoint.
    */
   filterEntrypoints?: string[];
   /**
@@ -62,8 +63,8 @@ export interface InlineConfig {
    * - <span v-pre>`{{modeSuffix}}`</span>: A suffix based on the mode ('-dev' for development, '' for production)
    * - <span v-pre>`{{command}}`</span>: The WXT command being run (e.g., 'build', 'serve')
    *
-   * @example "{{browser}}-mv{{manifestVersion}}{{modeSuffix}}"
-   * @default <span v-pre>`"{{browser}}-mv{{manifestVersion}}"`</span>
+   * @example "{{browser}}-mv{{manifestVersion}}"
+   * @default <span v-pre>`"{{browser}}-mv{{manifestVersion}}{{modeSuffix}}"`</span>
    */
   outDirTemplate?: string;
   /**
@@ -108,6 +109,12 @@ export interface InlineConfig {
    */
   browser?: TargetBrowser;
   /**
+   * Target browsers to support. When set, `import.meta.env.BROWSER` will be narrowed to a string literal type containing only the specified browser names.
+   *
+   * @default []
+   */
+  targetBrowsers?: TargetBrowser[];
+  /**
    * Explicitly set a manifest version to target. This will override the default manifest version
    * for each command, and can be overridden by the command line `--mv2` or `--mv3` option.
    */
@@ -125,9 +132,13 @@ export interface InlineConfig {
    */
   manifest?: UserManifest | Promise<UserManifest> | UserManifestFn;
   /**
-   * Custom runner options. Options set here can be overridden in a `web-ext.config.ts` file.
+   * Configure browser startup. Options set here can be overridden in a `web-ext.config.ts` file.
    */
-  runner?: ExtensionRunnerConfig;
+  webExt?: WebExtConfig;
+  /**
+   * @deprecated Use `webExt` instead. Same option, just renamed.
+   */
+  runner?: WebExtConfig;
   zip?: {
     /**
      * Configure the filename output when zipping files.
@@ -136,6 +147,7 @@ export interface InlineConfig {
      *
      * - <span v-pre>`{{name}}`</span> - The project's name converted to kebab-case
      * - <span v-pre>`{{version}}`</span> - The version_name or version from the manifest
+     * - <span v-pre>`{{packageVersion}}`</span> - The version from the package.json
      * - <span v-pre>`{{browser}}`</span> - The target browser from the `--browser` CLI flag
      * - <span v-pre>`{{mode}}`</span> - The current mode
      * - <span v-pre>`{{manifestVersion}}`</span> - Either "2" or "3"
@@ -160,6 +172,7 @@ export interface InlineConfig {
      *
      * - <span v-pre>`{{name}}`</span> - The project's name converted to kebab-case
      * - <span v-pre>`{{version}}`</span> - The version_name or version from the manifest
+     * - <span v-pre>`{{packageVersion}}`</span> - The version from the package.json
      * - <span v-pre>`{{browser}}`</span> - The target browser from the `--browser` CLI flag
      * - <span v-pre>`{{mode}}`</span> - The current mode
      * - <span v-pre>`{{manifestVersion}}`</span> - Either "2" or "3"
@@ -248,26 +261,6 @@ export interface InlineConfig {
      */
     compressionLevel?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
   };
-
-  /**
-   * @deprecated Use `hooks.build.manifestGenerated` to modify your manifest instead. This option
-   *             will be removed in v1.0
-   *
-   * Transform the final manifest before it's written to the file system. Edit the `manifest`
-   * parameter directly, do not return a new object. Return values are ignored.
-   *
-   * @example
-   * defineConfig({
-   *   // Add a CSS-only content script.
-   *   transformManifest(manifest) {
-   *     manifest.content_scripts.push({
-   *       matches: ["*://google.com/*"],
-   *       css: ["content-scripts/some-example.css"],
-   *     });
-   *   }
-   * })
-   */
-  transformManifest?: (manifest: Manifest.WebExtensionManifest) => void;
   analysis?: {
     /**
      * Explicitly include bundle analysis when running `wxt build`. This can be overridden by the
@@ -326,30 +319,6 @@ export interface InlineConfig {
    */
   alias?: Record<string, string>;
   /**
-   * Which extension API to use.
-   *
-   * - `"webextension-polyfill"`: Use `browser` and types from [`webextension-polyfill`](https://www.npmjs.com/package/webextension-polyfill).
-   * - `"chrome"`: Use the regular `chrome` (or `browser` for Firefox/Safari) globals provided by the browser. Types provided by [`@types/chrome`](https://www.npmjs.com/package/@types/chrome).
-   *
-   * @default "webextension-polyfill"
-   * @since 0.19.0
-   */
-  extensionApi?: 'webextension-polyfill' | 'chrome';
-  /**
-   * @deprecated Will be removed in v0.20.0, please migrate to using `vite-node`, the new default.
-   *
-   * Method used to import entrypoint files during the build process to extract their options.
-   *
-   * - `"vite-node"` (default as of 0.19.0): Uses `vite-node` to import the entrypoints. Automatically includes vite config based on your wxt.config.ts file
-   * - `"jiti"`: Simplest and fastest, but doesn't allow using any imported variables outside the entrypoint's main function
-   *
-   * @see {@link https://wxt.dev/guide/go-further/entrypoint-importers.html|Entrypoint Importers}
-   *
-   * @default "vite-node"
-   * @since 0.19.0
-   */
-  entrypointLoader?: 'vite-node' | 'jiti';
-  /**
    * Experimental settings - use with caution.
    */
   experimental?: {};
@@ -359,13 +328,25 @@ export interface InlineConfig {
   dev?: {
     server?: {
       /**
+       * Host to bind the dev server to.
+       *
+       * @default "localhost"
+       */
+      host?: string;
+      /**
        * Port to run the dev server on. Defaults to the first open port from 3000 to 3010.
        */
       port?: number;
       /**
+       * Origin to use to connect from the extension ui runtime to the dev server.
+       *
+       * @default "http://localhost:3000"
+       */
+      origin?: string;
+      /**
        * Hostname to run the dev server on.
        *
-       * @default "localhost"
+       * @deprecated use `host` to specify the interface to bind to, or use `origin` to specify the dev server hostname.
        */
       hostname?: string;
     };
@@ -444,7 +425,7 @@ export interface WxtHooks {
 }
 
 export interface BuildOutput {
-  manifest: Manifest.WebExtensionManifest;
+  manifest: Browser.runtime.Manifest;
   publicAssets: OutputAsset[];
   steps: BuildStepOutput[];
 }
@@ -542,7 +523,7 @@ export interface KeyboardShortcutWatcher {
 
 export interface ReloadContentScriptPayload {
   registration?: BaseContentScriptEntrypointOptions['registration'];
-  contentScript: Omit<Scripting.RegisteredContentScript, 'id'>;
+  contentScript: Omit<Browser.scripting.RegisteredContentScript, 'id'>;
 }
 
 export type TargetBrowser = string;
@@ -593,39 +574,39 @@ export interface BackgroundEntrypointOptions extends BaseEntrypointOptions {
 
 export interface BaseContentScriptEntrypointOptions
   extends BaseEntrypointOptions {
-  matches: PerBrowserOption<Manifest.ContentScript['matches']>;
+  matches?: PerBrowserOption<NonNullable<ManifestContentScript['matches']>>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default "documentIdle"
    */
-  runAt?: PerBrowserOption<Manifest.ContentScript['run_at']>;
+  runAt?: PerBrowserOption<Browser.scripting.RegisteredContentScript['runAt']>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default false
    */
   matchAboutBlank?: PerBrowserOption<
-    Manifest.ContentScript['match_about_blank']
+    ManifestContentScript['match_about_blank']
   >;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default []
    */
-  excludeMatches?: PerBrowserOption<Manifest.ContentScript['exclude_matches']>;
+  excludeMatches?: PerBrowserOption<ManifestContentScript['exclude_matches']>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default []
    */
-  includeGlobs?: PerBrowserOption<Manifest.ContentScript['include_globs']>;
+  includeGlobs?: PerBrowserOption<ManifestContentScript['include_globs']>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default []
    */
-  excludeGlobs?: PerBrowserOption<Manifest.ContentScript['exclude_globs']>;
+  excludeGlobs?: PerBrowserOption<ManifestContentScript['exclude_globs']>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default false
    */
-  allFrames?: PerBrowserOption<Manifest.ContentScript['all_frames']>;
+  allFrames?: PerBrowserOption<ManifestContentScript['all_frames']>;
   /**
    * See https://developer.chrome.com/docs/extensions/mv3/content_scripts/
    * @default false
@@ -733,7 +714,14 @@ export interface BaseEntrypoint {
    * subdirectory of it.
    */
   outputDir: string;
-  skipped: boolean;
+  /**
+   * When true, the entrypoint will not be built by WXT. Normally this is set
+   * based on the `filterEntrypoints` config or the entrypoint's
+   * `include`/`exclude` options defined inside the file.
+   *
+   * See https://wxt.dev/guide/essentials/target-different-browsers.html#filtering-entrypoints
+   */
+  skipped?: boolean;
 }
 
 export interface GenericEntrypoint extends BaseEntrypoint {
@@ -785,6 +773,13 @@ export type Entrypoint =
   | PopupEntrypoint
   | OptionsEntrypoint
   | SidepanelEntrypoint;
+
+export interface EntrypointInfo {
+  name: string;
+  /** Absolute path to the entrypoint file. */
+  inputPath: string;
+  type: Entrypoint['type'];
+}
 
 export type EntrypointGroup = Entrypoint | Entrypoint[];
 
@@ -859,7 +854,7 @@ export type ResolvedPerBrowserOptions<T, TOmitted extends keyof T = never> = {
  * here, they are configured inline.
  */
 export type UserManifest = {
-  [key in keyof chrome.runtime.ManifestV3 as key extends
+  [key in keyof Browser.runtime.ManifestV3 as key extends
     | 'action'
     | 'background'
     | 'chrome_url_overrides'
@@ -871,16 +866,16 @@ export type UserManifest = {
     | 'sandbox'
     | 'web_accessible_resources'
     ? never
-    : key]?: chrome.runtime.ManifestV3[key];
+    : key]?: Browser.runtime.ManifestV3[key];
 } & {
   // Add any Browser-specific or MV2 properties that WXT supports here
-  action?: chrome.runtime.ManifestV3['action'] & {
+  action?: Browser.runtime.ManifestV3['action'] & {
     browser_style?: boolean;
   };
-  browser_action?: chrome.runtime.ManifestV2['browser_action'] & {
+  browser_action?: Browser.runtime.ManifestV2['browser_action'] & {
     browser_style?: boolean;
   };
-  page_action?: chrome.runtime.ManifestV2['page_action'] & {
+  page_action?: Browser.runtime.ManifestV2['page_action'] & {
     browser_style?: boolean;
   };
   browser_specific_settings?: {
@@ -900,12 +895,12 @@ export type UserManifest = {
     };
   };
   permissions?: (
-    | chrome.runtime.ManifestPermissions
+    | Browser.runtime.ManifestPermissions
     | (string & Record<never, never>)
   )[];
   web_accessible_resources?:
     | string[]
-    | chrome.runtime.ManifestV3['web_accessible_resources'];
+    | Browser.runtime.ManifestV3['web_accessible_resources'];
 };
 
 export type UserManifestFn = (
@@ -937,9 +932,14 @@ export interface ConfigEnv {
 export type WxtCommand = 'build' | 'serve';
 
 /**
- * Configure how the browser starts up.
+ * @deprecated Use `WebExtConfig` instead.
  */
-export interface ExtensionRunnerConfig {
+export type ExtensionRunnerConfig = WebExtConfig;
+
+/**
+ * Options for how [`web-ext`](https://github.com/mozilla/web-ext) starts the browser.
+ */
+export interface WebExtConfig {
   /**
    * Whether or not to open the browser with the extension installed in dev mode.
    *
@@ -1032,9 +1032,13 @@ export interface WxtBuilder {
    */
   version: string;
   /**
-   * Import the entrypoint file, returning the default export containing the options.
+   * Import a JS entrypoint file, returning the default export containing the options.
    */
   importEntrypoint<T>(path: string): Promise<T>;
+  /**
+   * Import a list of JS entrypoint files, returning their options.
+   */
+  importEntrypoints(paths: string[]): Promise<Record<string, unknown>[]>;
   /**
    * Build a single entrypoint group. This is effectively one of the multiple "steps" during the
    * build process.
@@ -1083,18 +1087,19 @@ export interface WxtBuilderServer {
   /**
    * Chokidar file watcher instance.
    */
-  watcher: FSWatcher;
+  watcher: vite.ViteDevServer['watcher'];
+  on?(event: string, callback: () => void): void;
 }
 
 export interface ServerInfo {
   /**
+   * Ex: `"localhost"`
+   */
+  host: string;
+  /**
    * Ex: `3000`
    */
   port: number;
-  /**
-   * Ex: `"localhost"`
-   */
-  hostname: string;
   /**
    * Ex: `"http://localhost:3000"`
    */
@@ -1173,8 +1178,14 @@ export interface WxtHooks {
    */
   'build:manifestGenerated': (
     wxt: Wxt,
-    manifest: Manifest.WebExtensionManifest,
+    manifest: Browser.runtime.Manifest,
   ) => HookResult;
+  /**
+   * Called once the names and paths of all entrypoints have been resolved.
+   * @param wxt The configured WXT object
+   * @param infos List of entrypoints found in the project's `entrypoints` directory
+   */
+  'entrypoints:found': (wxt: Wxt, infos: EntrypointInfo[]) => HookResult;
   /**
    * Called once all entrypoints have been loaded from the `entrypointsDir`.
    * Use `wxt.builder.importEntrypoint` to load entrypoint options from the
@@ -1313,13 +1324,14 @@ export interface ResolvedConfig {
   mode: string;
   command: WxtCommand;
   browser: TargetBrowser;
+  targetBrowsers: TargetBrowser[];
   manifestVersion: TargetManifestVersion;
   env: ConfigEnv;
   logger: Logger;
-  imports: false | WxtResolvedUnimportOptions;
+  imports: WxtResolvedUnimportOptions;
   manifest: UserManifest;
   fsCache: FsCache;
-  runnerConfig: C12ResolvedConfig<ExtensionRunnerConfig>;
+  runnerConfig: C12ResolvedConfig<WebExtConfig>;
   zip: {
     name?: string;
     artifactTemplate: string;
@@ -1336,10 +1348,6 @@ export interface ResolvedConfig {
      */
     zipSources: boolean;
   };
-  /**
-   * @deprecated Use `build:manifestGenerated` hook instead.
-   */
-  transformManifest?: (manifest: Manifest.WebExtensionManifest) => void;
   analysis: {
     enabled: boolean;
     open: boolean;
@@ -1357,14 +1365,13 @@ export interface ResolvedConfig {
    * Import aliases to absolute paths.
    */
   alias: Record<string, string>;
-  extensionApi: 'webextension-polyfill' | 'chrome';
-  entrypointLoader: 'vite-node' | 'jiti';
   experimental: {};
   dev: {
     /** Only defined during dev command */
     server?: {
+      host: string;
       port: number;
-      hostname: string;
+      origin: string;
       /**
        * The milliseconds to debounce when a file is saved before reloading.
        * The only way to set this option is to set the `WXT_WATCH_DEBOUNCE`
@@ -1408,6 +1415,8 @@ export interface FsCache {
 export interface ExtensionRunner {
   openBrowser(): Promise<void>;
   closeBrowser(): Promise<void>;
+  /** Whether or not this runner actually opens the browser. */
+  canOpen?(): boolean;
 }
 
 export type EslintGlobalsPropValue =
@@ -1464,6 +1473,12 @@ export type WxtUnimportOptions = Partial<UnimportOptions> & {
 };
 
 export type WxtResolvedUnimportOptions = Partial<UnimportOptions> & {
+  /**
+   * Set to `true` when the user disabled auto-imports. We still use unimport for the #imports module, but other features should be disabled.
+   *
+   * You don't need to check this value before modifying the auto-import options. Even if `disabled` is `true`, there's no harm in adding imports to the config - they'll just be ignored.
+   */
+  disabled: boolean;
   eslintrc: ResolvedEslintrc;
 };
 

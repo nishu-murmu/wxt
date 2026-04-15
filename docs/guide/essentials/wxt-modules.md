@@ -9,19 +9,23 @@ WXT provides a "module system" that let's you run code at different steps in the
 There are two ways to add a module to your project:
 
 1. **NPM**: install an NPM package, like [`@wxt-dev/auto-icons`](https://www.npmjs.com/package/@wxt-dev/auto-icons) and add it to your config:
-   ```ts
-   // wxt.config.ts
+
+   ```ts [wxt.config.ts]
    export default defineConfig({
      modules: ['@wxt-dev/auto-icons'],
    });
    ```
+
    > Searching for ["wxt module"](https://www.npmjs.com/search?q=wxt%20module) on NPM is a good way to find published WXT modules.
+
 2. **Local**: add a file to your project's `modules/` directory:
-   ```
-   <srcDir>/
+
+   ```plaintext
+   <rootDir>/
      modules/
        my-module.ts
    ```
+
    > To learn more about writing your own modules, read the [Writing Modules](/guide/essentials/wxt-modules) docs.
 
 ## Module Options
@@ -112,12 +116,12 @@ export default defineWxtModule<AnalyticModuleOptions>({
 
 ```ts
 import { defineWxtModule } from 'wxt/modules';
-import 'wxt/sandbox';
+import 'wxt/utils/define-app-config';
 
 export interface MyModuleRuntimeOptions {
   // Add your runtime options here...
 }
-declare module 'wxt/sandbox' {
+declare module 'wxt/utils/define-app-config' {
   export interface WxtAppConfig {
     myModule: MyModuleOptions;
   }
@@ -165,6 +169,31 @@ This file could then be loaded at runtime:
 
 ```ts
 const res = await fetch(browser.runtime.getURL('/some-text.txt'));
+```
+
+#### Add custom entrypoints
+
+Once the existing files under the `entrypoints/` directory have been discovered, the `entrypoints:found` hook can be used to add custom entrypoints.
+
+:::info
+The `entrypoints:found` hook is triggered before validation is carried out on the list of entrypoints. Thus, any custom entrypoints will still be checked for duplicate names and logged during debugging.
+:::
+
+```ts
+import { defineWxtModule } from 'wxt/modules';
+
+export default defineWxtModule({
+  setup(wxt) {
+    wxt.hook('entrypoints:found', (_, entrypointInfos) => {
+      // Add your new entrypoint
+      entrypointInfos.push({
+        name: 'my-custom-script',
+        inputPath: 'path/to/custom-script.js',
+        type: 'content-script',
+      });
+    });
+  },
+});
 ```
 
 #### Generate runtime module

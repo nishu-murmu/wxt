@@ -21,7 +21,8 @@ export async function registerWxt(
 ): Promise<void> {
   // Default NODE_ENV environment variable before other packages, like vite, do it
   // See https://github.com/wxt-dev/wxt/issues/873#issuecomment-2254555523
-  process.env.NODE_ENV ??= command === 'serve' ? 'development' : 'production';
+  process.env.NODE_ENV ??=
+    inlineConfig.mode ?? (command === 'serve' ? 'development' : 'production');
 
   const hooks = createHooks<WxtHooks>();
   const config = await resolveConfig(inlineConfig, command);
@@ -36,6 +37,14 @@ export async function registerWxt(
       return config.logger;
     },
     async reloadConfig() {
+      // Prevent changing the server port when resolving config multiple times
+      // get-port-please doesn't always return the same port if it was recently closed.
+      if (wxt.config.dev.server?.port) {
+        inlineConfig.dev ??= {};
+        inlineConfig.dev.server ??= {};
+        inlineConfig.dev.server.port = wxt.config.dev.server.port;
+      }
+
       wxt.config = await resolveConfig(inlineConfig, command);
       await wxt.hooks.callHook('config:resolved', wxt);
     },

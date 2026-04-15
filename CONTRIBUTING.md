@@ -8,9 +8,17 @@ If you want to add a new feature, please create an issue or discussion first so 
 
 ## Conventional Commits
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/en) to automate versioning. If you're a new contributor, don't worry about this. When you open a PR, a maintainer will change the PR's title so it's in the style of conventional commits, but that's all.
+This project uses [Conventional Commit format](https://www.conventionalcommits.org/en/v1.0.0/) to automatically generate a changelog and better understand the changes in the project
 
-Maintainers, commits to the `main` branch (either directly or via PRs) must be valid conventional commits.
+Here are some examples of conventional commit messages:
+
+- `feat: add new functionality`
+- `fix: correct typos in code`
+- `ci: add GitHub Actions for automated testing`
+
+## Conventional PR Titles
+
+The title of your pull request should follow the [conventional commit format](#conventional-commits). When a pull request is merged to the main branch, all changes are going to be squashed into a single commit. The message of this commit will be the title of the pull request. And for every release, the commit messages are used to generate the changelog.
 
 ## Setup
 
@@ -145,3 +153,34 @@ pnpm dlx taze -r
 ```
 
 Configuration is in [`taze.config.ts`](./taze.config.ts).
+
+## Install Unreleased Versions
+
+This repo uses <https://pkg.pr.new> to publish versions of all it's packages for almost every commit. You can install them via:
+
+```sh
+npm i https://pkg.pr.new/[package-name]@[ref]
+```
+
+Or use one of the shorthands:
+
+```sh
+# Install the latest build of `wxt` from a PR:
+npm i https://pkg.pr.new/wxt@1283
+
+# Install the latest build of `@wxt-dev/module-react` on the `main` branch
+npm i https://pkg.pr.new/@wxt-dev/module-react@main
+
+# Install `@wxt-dev/storage` from a specific commit:
+npm i https://pkg.pr.new/@wxt-dev/module-react@426f907
+```
+
+## Blog Posts
+
+Anyone is welcome to submit a blog post on <https://wxt.dev/blog>!
+
+> [!NOTE]
+> Before starting on a blog post, please message Aaron on Discord or start a discussion on GitHub to get permission to write about a topic, but most topics are welcome: Major version updates, tutorials, etc.
+
+- **English only**: Blog posts should be written in English. Unfortunately, our maintainers doesn't have the bandwidth right now to translate our docs, let alone blog posts. Sorry 😓
+- **AI**: Please only use AI to translate or proof-read your blog post. Don't generate the whole thing... We don't want to publish that.

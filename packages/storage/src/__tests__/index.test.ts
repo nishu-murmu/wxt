@@ -1,6 +1,7 @@
 import { fakeBrowser } from '@webext-core/fake-browser';
 import { describe, it, expect, beforeEach, vi, expectTypeOf } from 'vitest';
 import { MigrationError, type WxtStorageItem, storage } from '../index';
+import { browser } from '@wxt-dev/browser';
 
 /**
  * This works because fakeBrowser is synchronous, and is will finish any number of chained
@@ -222,7 +223,7 @@ describe('Storage Utils', () => {
       describe('setMeta', () => {
         it('should set metadata at key+$', async () => {
           const existing = { v: 1 };
-          await chrome.storage[storageArea].set({ count$: existing });
+          await browser.storage[storageArea].set({ count$: existing });
           const newValues = {
             date: Date.now(),
           };
@@ -238,7 +239,7 @@ describe('Storage Utils', () => {
           'should remove any properties set to %s',
           async (version) => {
             const existing = { v: 1 };
-            await chrome.storage[storageArea].set({ count$: existing });
+            await browser.storage[storageArea].set({ count$: existing });
             const expected = {};
 
             await storage.setMeta(`${storageArea}:count`, { v: version });
@@ -489,6 +490,18 @@ describe('Storage Utils', () => {
         });
       });
 
+      describe('clear', () => {
+        it('should remove all items', async () => {
+          await fakeBrowser.storage[storageArea].set({
+            one: 1,
+            two: 2,
+          });
+
+          await storage.clear(storageArea);
+          expect(await fakeBrowser.storage[storageArea].get()).toEqual({});
+        });
+      });
+
       describe('removeMeta', () => {
         it('should remove all metadata', async () => {
           await fakeBrowser.storage[storageArea].set({ count$: { v: 4 } });
@@ -693,6 +706,30 @@ describe('Storage Utils', () => {
         expect(migrateToV3).toBeCalledWith(4);
       });
 
+      it('should call onMigrationComplete callback function if defined', async () => {
+        await fakeBrowser.storage.local.set({
+          count: 2,
+          count$: { v: 1 },
+        });
+        const migrateToV2 = vi.fn((oldCount) => oldCount * 2);
+        const migrateToV3 = vi.fn((oldCount) => oldCount * 3);
+        const onMigrationComplete = vi.fn((count, _v) => count);
+
+        storage.defineItem<number, { v: number }>(`local:count`, {
+          defaultValue: 0,
+          version: 3,
+          migrations: {
+            2: migrateToV2,
+            3: migrateToV3,
+          },
+          onMigrationComplete,
+        });
+        await waitForMigrations();
+
+        expect(onMigrationComplete).toBeCalledTimes(1);
+        expect(onMigrationComplete).toBeCalledWith(12, 3);
+      });
+
       it("should not run migrations if the value doesn't exist yet", async () => {
         const migrateToV2 = vi.fn((oldCount) => oldCount * 2);
         const migrateToV3 = vi.fn((oldCount) => oldCount * 3);
@@ -835,6 +872,73 @@ describe('Storage Utils', () => {
 
         await expect(item.migrate()).rejects.toThrow(expectedError);
       });
+
+      it('should print migration logs if debug option is true', async () => {
+        await fakeBrowser.storage.local.set({
+          count: 2,
+          count$: { v: 1 },
+        });
+        const migrateToV2 = vi.fn((oldCount) => oldCount * 2);
+        const migrateToV3 = vi.fn((oldCount) => oldCount * 3);
+        const consoleSpy = vi.spyOn(console, 'debug');
+
+        storage.defineItem<number, { v: number }>(`local:count`, {
+          defaultValue: 0,
+          version: 3,
+          migrations: {
+            2: migrateToV2,
+            3: migrateToV3,
+          },
+          debug: true,
+        });
+        await waitForMigrations();
+
+        expect(consoleSpy).toHaveBeenCalledTimes(4);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `[@wxt-dev/storage] Running storage migration for local:count: v1 -> v3`,
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `[@wxt-dev/storage] Storage migration processed for version: v2`,
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `[@wxt-dev/storage] Storage migration processed for version: v3`,
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `[@wxt-dev/storage] Storage migration completed for local:count v3`,
+          { migratedValue: expect.any(Number) },
+        );
+      });
+      it('should not print migration logs if debug option is undefined or false', async () => {
+        await fakeBrowser.storage.local.set({
+          count: 2,
+          count$: { v: 1 },
+          count2: 2,
+          count2$: { v: 1 },
+        });
+        const migrateToV2 = vi.fn((oldCount) => oldCount * 2);
+        const migrateToV3 = vi.fn((oldCount) => oldCount * 3);
+        const consoleSpy = vi.spyOn(console, 'debug');
+
+        storage.defineItem<number, { v: number }>(`local:count`, {
+          defaultValue: 0,
+          version: 3,
+          migrations: {
+            2: migrateToV2,
+            3: migrateToV3,
+          },
+        });
+
+        storage.defineItem<number, { v: number }>(`local:count2`, {
+          defaultValue: 0,
+          version: 2,
+          migrations: {
+            2: migrateToV2,
+          },
+          debug: false,
+        });
+        await waitForMigrations();
+        expect(consoleSpy).toHaveBeenCalledTimes(0);
+      });
     });
 
     describe('getValue', () => {
@@ -876,7 +980,7 @@ describe('Storage Utils', () => {
 
         const actual = await item.getMeta();
 
-        expect(actual).toBe(expected);
+        expect(actual).toEqual(expected);
       });
 
       it('should return an empty object if missing', async () => {
@@ -1162,7 +1266,7 @@ describe('Storage Utils', () => {
 
         await item.removeValue();
         // Make sure it's actually blank before running the test
-        expect(await chrome.storage.local.get()).toEqual({});
+        expect(await browser.storage.local.get()).toEqual({});
         init.mockClear();
 
         const [value1, value2] = await Promise.all([
@@ -1178,6 +1282,19 @@ describe('Storage Utils', () => {
       it('should define a nullable value when options are not passed', () => {
         const item = storage.defineItem<number>(`local:test`);
         expectTypeOf(item).toEqualTypeOf<WxtStorageItem<number | null, {}>>();
+
+        const item2 = storage.defineItem<number>(`local:test`, {});
+        expectTypeOf(item2).toEqualTypeOf<WxtStorageItem<number | null, {}>>();
+
+        const item3 = storage.defineItem<number>(`local:test`, {
+          fallback: undefined,
+        });
+        expectTypeOf(item3).toEqualTypeOf<WxtStorageItem<number | null, {}>>();
+
+        const item4 = storage.defineItem<number>(`local:test`, {
+          defaultValue: undefined,
+        });
+        expectTypeOf(item4).toEqualTypeOf<WxtStorageItem<number | null, {}>>();
       });
 
       it('should define a non-null value when options are passed with a nullish default value', () => {
@@ -1185,6 +1302,11 @@ describe('Storage Utils', () => {
           defaultValue: 123,
         });
         expectTypeOf(item).toEqualTypeOf<WxtStorageItem<number, {}>>();
+
+        const item2 = storage.defineItem(`local:test`, {
+          fallback: 123,
+        });
+        expectTypeOf(item2).toEqualTypeOf<WxtStorageItem<number, {}>>();
       });
 
       it('should define a nullable value when options are passed with null default value', () => {

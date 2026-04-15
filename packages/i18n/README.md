@@ -6,7 +6,7 @@
 
 1. Simple messages file format
 2. Plural form support
-3. Integrates with the [I18n Ally VS Code extension](#vscode)
+3. Integrates with the [I18n Ally VS Code extension](#vs-code)
 
 It also provides several benefits over other non-web extension specific i18n packages:
 
@@ -49,7 +49,7 @@ However, it does have one major downside:
    helloWorld: Hello world!
    ```
 
-   > `@wxt-dev/i18n` supports the standard messages format, so if you already have localization files at `<srcDir>/public/_locale/<lang>/messages.json`, you don't need to convert them to YAML or refactor them - just move them to `<srcDir>/locales/<lang>.json` and they'll just work out of the box!
+   > `@wxt-dev/i18n` supports the standard messages format, so if you already have localization files at `<rootDir>/public/_locale/<lang>/messages.json`, you don't need to convert them to YAML or refactor them - just move them to `<srcDir>/locales/<lang>.json` and they'll just work out of the box!
 
 4. To get a translation, use the auto-imported `i18n` object or import it manually:
 
@@ -81,7 +81,7 @@ And you're done! Using WXT, you get type-safety out of the box.
 
    > [!NOTE]
    > For the best DX, you should to integrate `@wxt-dev/i18n` into your build process. This enables:
-
+   >
    > 1. Plural forms
    > 2. Simple messages file format
    > 3. Type safety
@@ -354,6 +354,7 @@ You'll need to configure it the extension so it knows where your localization fi
 # You can check available language ids here: https://code.visualstudio.com/docs/languages/identifiers
 languageIds:
   - typescript
+  - typescriptreact
 
 # Look for t("...")
 usageMatchRegex:

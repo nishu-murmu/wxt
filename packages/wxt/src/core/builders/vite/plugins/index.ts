@@ -1,7 +1,6 @@
 export * from './devHtmlPrerender';
 export * from './devServerGlobals';
 export * from './download';
-export * from './multipageMove';
 export * from './resolveVirtualModules';
 export * from './tsconfigPaths';
 export * from './noopBackground';
@@ -9,7 +8,6 @@ export * from './cssEntrypoints';
 export * from './bundleAnalysis';
 export * from './globals';
 export * from './extensionApiMock';
-export * from './resolveExtensionApi';
 export * from './entrypointGroupGlobals';
 export * from './defineImportMeta';
 export * from './removeEntrypointMainFunction';
