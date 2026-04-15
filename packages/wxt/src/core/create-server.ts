@@ -21,7 +21,6 @@ import {
 } from './utils/building';
 import { createExtensionRunner } from './runners';
 import { Mutex } from 'async-mutex';
-import pc from 'picocolors';
 import { relative } from 'node:path';
 import { deinitWxtModules, initWxtModules, registerWxt, wxt } from './wxt';
 import { unnormalizePath } from './utils/paths';
@@ -31,15 +30,17 @@ import {
 } from './utils/content-scripts';
 import { createKeyboardShortcuts } from './keyboard-shortcuts';
 import { isBabelSyntaxError, logBabelSyntaxError } from './utils/syntax-errors';
+import { styleText } from 'node:util';
 
 /**
- * Creates a dev server and pre-builds all the files that need to exist before loading the extension.
+ * Creates a dev server and pre-builds all the files that need to exist before
+ * loading the extension.
  *
  * @example
- * const server = await wxt.createServer({
- *   // Enter config...
- * });
- * await server.start();
+ *   const server = await wxt.createServer({
+ *     // Enter config...
+ *   });
+ *   await server.start();
  */
 export async function createServer(
   inlineConfig?: InlineConfig,
@@ -127,7 +128,7 @@ async function createServerInternal(): Promise<WxtDevServer> {
     async stop() {
       wasStopped = true;
       keyboardShortcuts.stop();
-      await runner.closeBrowser();
+      await runner.closeBrowser?.();
       await builderServer.close();
       await wxt.hooks.callHook('server:closed', wxt, server);
 
@@ -151,8 +152,7 @@ async function createServerInternal(): Promise<WxtDevServer> {
       server.ws.send('wxt:reload-extension');
     },
     async restartBrowser() {
-      const keyboardsShortCuts = createKeyBoardShortCuts(server);
-      await runner.closeBrowser();
+      await runner.closeBrowser?.();
       keyboardShortcuts.stop();
       await wxt.reloadConfig();
       runner = await createExtensionRunner();
@@ -201,9 +201,7 @@ async function createServerInternal(): Promise<WxtDevServer> {
 }
 var isWatching = false;
 
-/**
- * Function that creates a key board shortcut the extension.
- */
+/** Function that creates a key board shortcut the extension. */
 export function createKeyBoardShortCuts(
   server: WxtDevServer,
 ): KeyboardShortcutWatcher {
@@ -240,8 +238,8 @@ export function createKeyBoardShortCuts(
 }
 
 /**
- * Returns a function responsible for reloading different parts of the extension when a file
- * changes.
+ * Returns a function responsible for reloading different parts of the extension
+ * when a file changes.
  */
 function createFileReloader(server: WxtDevServer) {
   const fileChangedMutex = new Mutex();
@@ -278,7 +276,7 @@ function createFileReloader(server: WxtDevServer) {
       // Log the entrypoints that were effected
       wxt.logger.info(
         `Changed: ${Array.from(new Set(fileChanges))
-          .map((file) => pc.dim(relative(wxt.config.root, file)))
+          .map((file) => styleText('dim', relative(wxt.config.root, file)))
           .join(', ')}`,
       );
 
@@ -336,7 +334,8 @@ function createFileReloader(server: WxtDevServer) {
 }
 
 /**
- * From the server, tell the client to reload content scripts from the provided build step outputs.
+ * From the server, tell the client to reload content scripts from the provided
+ * build step outputs.
  */
 function reloadContentScripts(steps: BuildStepOutput[], server: WxtDevServer) {
   if (wxt.config.manifestVersion === 3) {
@@ -383,14 +382,13 @@ function reloadHtmlPages(
 
 function getFilenameList(names: string[]): string {
   return names
-    .map((name) => {
-      return pc.cyan(name);
-    })
-    .join(pc.dim(', '));
+    .map((name) => styleText('cyan', name))
+    .join(styleText('dim', ', '));
 }
 
 /**
  * Based on the current build output, return a list of files that are:
+ *
  * 1. Not in node_modules
  * 2. Not inside project root
  */

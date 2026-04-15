@@ -5,7 +5,8 @@
 ## Features
 
 - Generate extension icons with the correct sizes
-- Make the icon greyscale during development
+- Make the icon greyscale or include a visible overlay during development
+- SVG is supported
 
 ## Usage
 
@@ -15,7 +16,7 @@ Install the package:
 npm i --save-dev @wxt-dev/auto-icons
 pnpm i -D @wxt-dev/auto-icons
 yarn add --dev @wxt-dev/auto-icons
-bun i -D @wxt-dev/auto-icons
+bun add -D @wxt-dev/auto-icons
 ```
 
 Add the module to `wxt.config.ts`:

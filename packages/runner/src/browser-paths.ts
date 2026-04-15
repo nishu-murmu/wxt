@@ -1,11 +1,14 @@
 export type BrowserPlatform = 'windows' | 'mac' | 'linux';
 
 export type KnownTarget =
+  | 'arc'
+  | 'brave'
   | 'chromium'
   | 'chrome'
   | 'chrome-beta'
   | 'chrome-dev'
   | 'chrome-canary'
+  | 'dia'
   | 'edge'
   | 'edge-beta'
   | 'edge-dev'
@@ -21,6 +24,16 @@ export const KNOWN_BROWSER_PATHS: Record<
 > = {
   // Chromium based targets
 
+  arc: {
+    mac: ['/Applications/Arc.app/Contents/MacOS/Arc'],
+    linux: [],
+    windows: [],
+  },
+  brave: {
+    mac: ['Applications/Brave Browser.app/Contents/MacOS/Brave Browser'],
+    linux: [],
+    windows: [],
+  },
   chromium: {
     mac: [],
     linux: [
@@ -30,7 +43,10 @@ export const KNOWN_BROWSER_PATHS: Record<
     windows: [],
   },
   chrome: {
-    mac: ['/Applications/Chrome.app/Contents/MacOS/Google Chrome'],
+    mac: [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chrome.app/Contents/MacOS/Google Chrome',
+    ],
     linux: [],
     windows: ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'],
   },
@@ -42,12 +58,18 @@ export const KNOWN_BROWSER_PATHS: Record<
   'chrome-canary': {
     mac: [
       '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+      '/Applications/Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
     ],
     linux: [],
     windows: [],
   },
   'chrome-dev': {
     mac: [],
+    linux: [],
+    windows: [],
+  },
+  dia: {
+    mac: ['/Applications/Dia.app/Contents/MacOS/Dia'],
     linux: [],
     windows: [],
   },
@@ -96,21 +118,29 @@ export const KNOWN_BROWSER_PATHS: Record<
     windows: [],
   },
   zen: {
-    mac: ['/Applications/Zen Browser.app/Contents/MacOS/zen'],
+    mac: [
+      '/Applications/Zen Browser.app/Contents/MacOS/zen',
+      // Homebrew Cask
+      // https://github.com/Homebrew/homebrew-cask/blob/main/Casks/z/zen.rb#L23C13-L23C19
+      '/Applications/Zen.app/Contents/MacOS/zen',
+    ],
     linux: [],
     windows: [],
   },
 };
 
 /**
- * When targeting a browser, this map contains the other targets to fall back on when a binary could not be found for the primary target.
+ * When targeting a browser, this map contains the other targets to fall back on
+ * when a binary could not be found for the primary target.
  */
 export const FALLBACK_TARGETS: Partial<Record<KnownTarget, KnownTarget[]>> = {
   chrome: [
+    'arc',
     'chromium',
     'chrome-canary',
     'chrome-beta',
     'chrome-dev',
+    'dia',
     'edge',
     'edge-canary',
     'edge-beta',
